@@ -32,6 +32,7 @@ function auth(req, res, next) {
       email: decoded.email,
       role: decoded.role,
       empresaId: decoded.empresaId || null,
+      funcionarioId: decoded.funcionarioId || null,
     };
 
     // Abre o escopo de tenant para o resto da requisição

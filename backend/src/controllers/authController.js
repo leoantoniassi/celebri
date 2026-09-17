@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { Usuario, Empresa } = require('../models');
+const { Usuario, Empresa, Funcionario, Funcao } = require('../models');
 const { resolverTenant } = require('../utils/resolverTenant');
 const { enviarEmailRecuperacaoSenha } = require('../services/emailService');
 
@@ -67,10 +67,21 @@ async function login(req, res, next) {
         email: usuario.email,
         role: usuario.role,
         empresaId: usuario.empresaId,
+        funcionarioId: usuario.funcionarioId,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
+
+    // Se a conta estiver vinculada a um funcionário de campo (app mobile),
+    // traz os dados já resolvidos para evitar uma chamada extra do cliente.
+    const funcionario = usuario.funcionarioId
+      ? await Funcionario.findOne({
+          where: { id: usuario.funcionarioId },
+          include: [{ model: Funcao, as: 'funcao', attributes: ['id', 'nome'] }],
+          ignoraTenant: true,
+        })
+      : null;
 
     return res.json({
       success: true,
@@ -83,6 +94,10 @@ async function login(req, res, next) {
         empresaId: usuario.empresaId,
         empresa: usuario.empresaId
           ? { id: empresa.id, nomeFantasia: empresa.nomeFantasia, slug: empresa.slug }
+          : null,
+        funcionarioId: usuario.funcionarioId,
+        funcionario: funcionario
+          ? { id: funcionario.id, nome: funcionario.nome, funcao: funcionario.funcao?.nome || null }
           : null,
       },
       token,

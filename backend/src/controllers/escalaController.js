@@ -164,6 +164,38 @@ async function listarPorEvento(req, res, next) {
   }
 }
 
+// GET /api/escala/minhas
+// Escalas do funcionário vinculado ao usuário logado (app mobile Festify Staff)
+async function listarMinhas(req, res, next) {
+  try {
+    const { funcionarioId } = req.user;
+
+    if (!funcionarioId) {
+      return res.json({
+        success: true,
+        message: 'Esta conta não está vinculada a um funcionário de campo.',
+        data: [],
+      });
+    }
+
+    const escalas = await Escala.findAll({
+      where: { funcionarioId },
+      include: [
+        {
+          model: Evento,
+          as: 'evento',
+          attributes: ['id', 'nome', 'dataEvento', 'horarioTermino', 'status', 'localId'],
+        },
+      ],
+      order: [[{ model: Evento, as: 'evento' }, 'dataEvento', 'ASC']],
+    });
+
+    return res.json({ success: true, data: escalas });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 // GET /api/escala/disponiveis/:eventoId
 // Retorna funcionários disponíveis para o evento respeitando gap mínimo de 2h
 async function listarDisponiveis(req, res, next) {
@@ -292,4 +324,4 @@ async function alocarLote(req, res, next) {
   }
 }
 
-module.exports = { alocar, alocarLote, remover, listarPorEvento, listarDisponiveis };
+module.exports = { alocar, alocarLote, remover, listarPorEvento, listarDisponiveis, listarMinhas };

@@ -35,6 +35,10 @@ const OrcamentoProduto = require('./OrcamentoProduto');
 Funcao.hasMany(Funcionario, { foreignKey: 'funcaoId', as: 'funcionarios' });
 Funcionario.belongsTo(Funcao, { foreignKey: 'funcaoId', as: 'funcao' });
 
+// ── Funcionario 1:1 Usuario (conta de login do app mobile) ───
+Usuario.belongsTo(Funcionario, { foreignKey: 'funcionarioId', as: 'funcionario' });
+Funcionario.hasOne(Usuario, { foreignKey: 'funcionarioId', as: 'usuario' });
+
 // ── CategoriaFornecedor 1:N Fornecedor ───────────────────────
 CategoriaFornecedor.hasMany(Fornecedor, { foreignKey: 'categoriaId', as: 'fornecedores' });
 Fornecedor.belongsTo(CategoriaFornecedor, { foreignKey: 'categoriaId', as: 'categoria' });

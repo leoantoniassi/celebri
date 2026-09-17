@@ -8,6 +8,7 @@ const authorize = require('../middleware/roles');
 
 router.use(auth);
 
+router.get('/minhas',                controller.listarMinhas);
 router.get('/disponiveis/:eventoId', controller.listarDisponiveis);
 router.get('/evento/:eventoId',      controller.listarPorEvento);
 router.post('/',                     authorize('gerente', 'operador'), controller.alocar);

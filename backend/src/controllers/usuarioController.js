@@ -46,7 +46,7 @@ async function listar(req, res, next) {
 
 async function criar(req, res, next) {
   try {
-    const { nome, email, senha, role } = req.body;
+    const { nome, email, senha, role, funcionarioId } = req.body;
 
     if (!nome || !email || !senha) {
       return res.status(400).json({
@@ -64,12 +64,19 @@ async function criar(req, res, next) {
       senha: hash,
       role: userRole,
       status: 'ativo',
+      funcionarioId: funcionarioId || null,
     });
 
     return res.status(201).json({
       success: true,
       message: 'Usuário criado com sucesso!',
-      data: { id: usuario.id, nome: usuario.nome, email: usuario.email, role: usuario.role },
+      data: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        role: usuario.role,
+        funcionarioId: usuario.funcionarioId,
+      },
     });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -140,7 +147,7 @@ async function remover(req, res, next) {
 
 async function convidarUsuario(req, res, next) {
   try {
-    const { nome, email, role } = req.body;
+    const { nome, email, role, funcionarioId } = req.body;
 
     if (!nome || !email || !role) {
       return res.status(400).json({
@@ -180,6 +187,7 @@ async function convidarUsuario(req, res, next) {
       status: 'pendente',
       conviteToken: token,
       conviteExpiracao: expiracao,
+      funcionarioId: funcionarioId || null,
     });
 
     // Delega o envio do e-mail ao emailService (SRP)
