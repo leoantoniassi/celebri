@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const SETTINGS_ITEMS = [
   {
@@ -15,6 +16,7 @@ const SETTINGS_ITEMS = [
 
 export default function SettingsMenu() {
   const { user } = useAuth();
+  const { modoEscuro, toggleModoEscuro } = useTheme();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -49,11 +51,6 @@ export default function SettingsMenu() {
     };
   }, [isOpen]);
 
-  // Se o usuário não tiver permissão para ver nenhum item de configuração, não renderiza o botão
-  if (visibleItems.length === 0) {
-    return null;
-  }
-
   const handleSelect = (to) => {
     setIsOpen(false);
     navigate(to);
@@ -87,7 +84,7 @@ export default function SettingsMenu() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-64 rounded-2xl bg-surface-container-high border border-outline-variant/30 shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute right-0 mt-2 w-72 rounded-2xl bg-surface-container-high border border-outline-variant/30 shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
           role="menu"
           aria-orientation="vertical"
           aria-labelledby="btn-settings-menu"
@@ -99,6 +96,46 @@ export default function SettingsMenu() {
           </div>
 
           <div className="space-y-0.5">
+            {/* Botão de Modo Escuro — acessível e clicável por qualquer tipo de usuário */}
+            <button
+              type="button"
+              onClick={toggleModoEscuro}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left text-sm text-on-surface hover:bg-primary/10 transition-colors group"
+              role="menuitem"
+              id="btn-toggle-modo-escuro"
+              aria-checked={modoEscuro}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors shrink-0">
+                  <span className="material-symbols-outlined text-lg">
+                    {modoEscuro ? "light_mode" : "dark_mode"}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-semibold text-on-surface text-sm leading-snug">
+                    Modo Escuro
+                  </p>
+                  <p className="text-xs text-on-surface-variant/80">
+                    {modoEscuro ? "Ativado" : "Desativado"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Switch pill visual */}
+              <div
+                className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out cursor-pointer ${
+                  modoEscuro ? "bg-primary justify-end" : "bg-outline-variant/50 justify-start"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${
+                    modoEscuro ? "bg-on-primary" : "bg-surface"
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Itens dinâmicos por perfil */}
             {visibleItems.map((item) => (
               <button
                 key={item.id}

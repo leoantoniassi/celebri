@@ -63,6 +63,27 @@ async function aplicar(client, arquivo) {
   }
 }
 
+async function rodarMigrations() {
+  const client = conectar();
+  await client.connect();
+  try {
+    await garantirTabelaControle(client);
+    const aplicadas = await versoesAplicadas(client);
+    const arquivos = listarArquivos();
+    const pendentes = arquivos.filter((a) => !aplicadas.has(a));
+
+    if (pendentes.length > 0) {
+      console.log(`📦 Aplicando ${pendentes.length} migration(s) pendente(s):`);
+      for (const arquivo of pendentes) {
+        await aplicar(client, arquivo);
+      }
+      console.log('✅ Migrations aplicadas com sucesso.');
+    }
+  } finally {
+    await client.end();
+  }
+}
+
 async function main() {
   const [comando, argumento] = process.argv.slice(2);
   const client = conectar();
@@ -109,7 +130,12 @@ async function main() {
   }
 }
 
-main().catch((erro) => {
-  console.error(`\nMigration falhou: ${erro.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((erro) => {
+    console.error(`\nMigration falhou: ${erro.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { rodarMigrations, conectar, listarArquivos, garantirTabelaControle, versoesAplicadas };
+

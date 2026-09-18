@@ -18,8 +18,8 @@ const cache = new Map(); // empresaId → { valor, expiraEm }
 const PADRAO = {
   nomeFantasia: 'Celebri',
   logoUrl: null,
-  corPrimaria: '#FEDC57',
-  corTexto: '#1a1a1a',
+  corPrimaria: '#1CEAFF',
+  corTexto: '#021a1d',
 };
 
 /**

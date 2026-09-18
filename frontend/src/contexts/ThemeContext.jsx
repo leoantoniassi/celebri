@@ -13,6 +13,7 @@ import { derivarPaleta, aplicarPaleta, PALETA_PADRAO } from '../utils/theme';
 // ============================================================
 
 const CHAVE_CACHE = 'celebri:tenant';
+const CHAVE_MODO_ESCURO = 'celebri:modo-escuro';
 
 const ThemeContext = createContext(null);
 
@@ -22,6 +23,18 @@ const CONFIG_PADRAO = {
   logoUrl: null,
   cores: PALETA_PADRAO,
 };
+
+/** Lê a preferência salva de modo escuro (ou segue a preferência do sistema). */
+export function lerPreferenciaModoEscuro() {
+  try {
+    const salvo = localStorage.getItem(CHAVE_MODO_ESCURO);
+    if (salvo === 'dark') return true;
+    if (salvo === 'light') return false;
+    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {
+    return false;
+  }
+}
 
 /** Lê o cache gravado no último acesso. Usado para pintar antes da rede responder. */
 export function lerCache() {
@@ -44,13 +57,37 @@ function gravarCache(config, paleta) {
 }
 
 export function ThemeProvider({ children }) {
+  const [modoEscuro, setModoEscuro] = useState(lerPreferenciaModoEscuro);
   const [config, setConfig] = useState(() => lerCache() || CONFIG_PADRAO);
   const [carregando, setCarregando] = useState(true);
 
-  const aplicar = useCallback((cores) => {
-    const paleta = derivarPaleta(cores);
+  // Sincroniza a classe .dark no <html> e a paleta correspondente
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (modoEscuro) {
+      raiz.classList.add('dark');
+      try {
+        localStorage.setItem(CHAVE_MODO_ESCURO, 'dark');
+      } catch {}
+    } else {
+      raiz.classList.remove('dark');
+      try {
+        localStorage.setItem(CHAVE_MODO_ESCURO, 'light');
+      } catch {}
+    }
+    const paleta = derivarPaleta(config.cores, { escuro: modoEscuro });
+    aplicarPaleta(paleta);
+    gravarCache(config, paleta);
+  }, [modoEscuro, config]);
+
+  const aplicar = useCallback((cores, escuro = modoEscuro) => {
+    const paleta = derivarPaleta(cores, { escuro });
     aplicarPaleta(paleta);
     return paleta;
+  }, [modoEscuro]);
+
+  const toggleModoEscuro = useCallback(() => {
+    setModoEscuro((anterior) => !anterior);
   }, []);
 
   const carregar = useCallback(async () => {
@@ -58,7 +95,7 @@ export function ThemeProvider({ children }) {
       const { data } = await api.get('/tenant/config');
       const recebido = { ...CONFIG_PADRAO, ...data.data };
       setConfig(recebido);
-      gravarCache(recebido, aplicar(recebido.cores));
+      gravarCache(recebido, aplicar(recebido.cores, modoEscuro));
       return recebido;
     } catch {
       // Backend fora do ar ou empresa não resolvida: segue com o que
@@ -68,36 +105,38 @@ export function ThemeProvider({ children }) {
     } finally {
       setCarregando(false);
     }
-  }, [aplicar]);
+  }, [aplicar, modoEscuro]);
 
   useEffect(() => {
     // Pinta imediatamente com o cache, depois confirma com o servidor.
-    aplicar(config.cores);
+    aplicar(config.cores, modoEscuro);
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Aplica cores sem salvar — usado pelo preview ao vivo em /configuracoes. */
   const aplicarPreview = useCallback((cores) => {
-    aplicar({ ...config.cores, ...cores });
-  }, [aplicar, config.cores]);
+    aplicar({ ...config.cores, ...cores }, modoEscuro);
+  }, [aplicar, config.cores, modoEscuro]);
 
   /** Descarta o preview e volta para as cores salvas. */
   const descartarPreview = useCallback(() => {
-    aplicar(config.cores);
-  }, [aplicar, config.cores]);
+    aplicar(config.cores, modoEscuro);
+  }, [aplicar, config.cores, modoEscuro]);
 
   /** Chamado após salvar em /configuracoes, para propagar a mudança. */
   const atualizarConfig = useCallback((novaConfig) => {
     const mesclada = { ...CONFIG_PADRAO, ...novaConfig };
     setConfig(mesclada);
-    gravarCache(mesclada, aplicar(mesclada.cores));
-  }, [aplicar]);
+    gravarCache(mesclada, aplicar(mesclada.cores, modoEscuro));
+  }, [aplicar, modoEscuro]);
 
   return (
     <ThemeContext.Provider
       value={{
         config,
+        modoEscuro,
+        toggleModoEscuro,
         carregando,
         recarregar: carregar,
         aplicarPreview,

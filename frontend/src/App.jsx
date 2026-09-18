@@ -100,11 +100,7 @@ function AppRoutes() {
         />
         <Route
           path="configuracoes"
-          element={
-            <RoleRoute role="gerente">
-              <ConfiguracoesPage />
-            </RoleRoute>
-          }
+          element={<ConfiguracoesPage />}
         />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

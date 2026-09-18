@@ -3,6 +3,7 @@ import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Toast from '../../components/Toast';
+import WhatsAppIcon from '../../components/WhatsAppIcon';
 import useDeleteWithConfirm from '../../hooks/useDeleteWithConfirm';
 
 export default function FuncionariosPage() {
@@ -144,7 +145,7 @@ export default function FuncionariosPage() {
                     <td className="px-4 py-4 text-right">
                       <div className="flex justify-end gap-1">
                         <button onClick={(e) => { e.stopPropagation(); handleWhatsApp(f.id); }} className="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-110 transition-all shadow-md shadow-secondary/20 mr-1" title="WhatsApp">
-                          <span className="material-symbols-outlined text-sm filled">chat</span>
+                          <WhatsAppIcon className="w-4 h-4" />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); handleEdit(f); }} className="p-1.5 text-on-surface-variant hover:text-primary rounded-full transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
                         {user?.role !== 'operador' && (

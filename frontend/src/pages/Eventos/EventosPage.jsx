@@ -3,6 +3,7 @@ import api from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useConfirm } from "../../contexts/ConfirmContext";
 import Toast from "../../components/Toast";
+import WhatsAppIcon from "../../components/WhatsAppIcon";
 import useDeleteWithConfirm from "../../hooks/useDeleteWithConfirm";
 
 export default function EventosPage() {
@@ -450,7 +451,7 @@ export default function EventosPage() {
                           className="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-110 transition-all shadow-md shadow-secondary/20 mr-1"
                           title="WhatsApp"
                         >
-                          <span className="material-symbols-outlined text-sm filled">chat</span>
+                          <WhatsAppIcon className="w-4 h-4" />
                         </button>
                         {evt.status !== 'cancelado' && evt.status !== 'concluido' && (
                           <button

@@ -58,7 +58,7 @@ export default function DashboardCharts() {
   ].filter(Boolean);
 
   const obterCorGrafico = (indice) => {
-    if (!paletaGrafico.length) return cores['chart-1'] || '#FEDC57';
+    if (!paletaGrafico.length) return cores['chart-1'] || '#1CEAFF';
     return paletaGrafico[indice % paletaGrafico.length];
   };
 

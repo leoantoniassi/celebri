@@ -5,6 +5,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { validarCpfCnpj } from '../../utils/validators';
 import { formatCpfCnpj } from '../../utils/formatters';
 import Toast from '../../components/Toast';
+import WhatsAppIcon from '../../components/WhatsAppIcon';
 import useDeleteWithConfirm from '../../hooks/useDeleteWithConfirm';
 
 export default function ClientesPage() {
@@ -202,7 +203,7 @@ export default function ClientesPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => handleWhatsApp(c.id)} className="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-110 transition-all shadow-md shadow-secondary/20" title="WhatsApp">
-                          <span className="material-symbols-outlined text-lg filled">chat</span>
+                          <WhatsAppIcon className="w-5 h-5" />
                         </button>
                         <button onClick={() => openCatModal(c)} className="w-9 h-9 rounded-full bg-primary/20 text-on-surface flex items-center justify-center hover:bg-primary hover:text-on-primary hover:scale-110 transition-all shadow-md shadow-primary/10" title="Enviar Catálogo">
                           <span className="material-symbols-outlined text-lg">menu_book</span>
@@ -366,7 +367,7 @@ export default function ClientesPage() {
                 disabled={!selectedCatalogo}
                 className="flex-[2] bg-secondary text-on-secondary py-3 rounded-full font-bold shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-lg filled">chat</span>
+                <WhatsAppIcon className="w-5 h-5" />
                 Enviar via WhatsApp
               </button>
             </div>

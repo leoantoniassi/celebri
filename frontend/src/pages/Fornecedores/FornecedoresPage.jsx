@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { validarCpfCnpj } from '../../utils/validators';
 import { formatCpfCnpj } from '../../utils/formatters';
+import WhatsAppIcon from '../../components/WhatsAppIcon';
 
 export default function FornecedoresPage() {
   const { user } = useAuth();
@@ -185,7 +186,7 @@ export default function FornecedoresPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => handleWhatsApp(f.id)} className="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-110 transition-all shadow-md shadow-secondary/20" title="WhatsApp">
-                          <span className="material-symbols-outlined text-lg filled">chat</span>
+                          <WhatsAppIcon className="w-5 h-5" />
                         </button>
                         <button onClick={() => handleEdit(f)} className="w-9 h-9 rounded-full bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-primary/20 transition-all" title="Editar">
                           <span className="material-symbols-outlined text-lg">edit</span>

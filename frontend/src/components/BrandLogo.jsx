@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // ============================================================
@@ -18,17 +19,24 @@ const TAMANHOS = {
   xl: { caixa: 'w-16 h-16', icone: 'text-4xl' },
 };
 
-export default function BrandLogo({ tamanho = 'md', className = '' }) {
+export default function BrandLogo({ tamanho = 'md', className = '', logoUrl, nomeFantasia }) {
   const tema = useTheme();
   const config = tema?.config;
   const { caixa, icone } = TAMANHOS[tamanho] || TAMANHOS.md;
-  const nome = config?.nomeFantasia || 'Celebri';
+  const nome = nomeFantasia || config?.nomeFantasia || 'Celebri';
+  const urlParaUsar = logoUrl !== undefined ? logoUrl : config?.logoUrl;
+  const [imagemComErro, setImagemComErro] = useState(false);
 
-  if (config?.logoUrl) {
+  useEffect(() => {
+    setImagemComErro(false);
+  }, [urlParaUsar]);
+
+  if (urlParaUsar && !imagemComErro) {
     return (
       <img
-        src={config.logoUrl}
+        src={urlParaUsar}
         alt={nome}
+        onError={() => setImagemComErro(true)}
         className={`${caixa} rounded-full object-contain ${className}`}
       />
     );

@@ -27,12 +27,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      const isLoginRequest = error.config && error.config.url && error.config.url.includes('/auth/login');
+    if (error.response) {
+      const { status, data } = error.response;
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+
       if (!isLoginRequest) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (status === 401 || status === 403 || (status === 404 && data?.message?.includes('Empresa não encontrada'))) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

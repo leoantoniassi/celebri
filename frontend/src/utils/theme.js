@@ -178,33 +178,63 @@ function papel(hex) {
 // ── API pública ──────────────────────────────────────────────
 
 export const PALETA_PADRAO = {
-  primaria: '#FEDC57',
-  secundaria: '#7DBA00',
-  terciaria: '#6600A1',
+  primaria: '#1CEAFF',
+  secundaria: '#FF45FF',
+  terciaria: '#1F357F',
 };
 
 /**
  * Deriva os tokens de cor do index.css a partir das 3 cores base.
  *
- * As superfícies herdam o matiz da primária com croma bem baixo — foi
- * assim que a paleta original foi construída (o fundo creme #fdfcf5 vem
- * do amarelo da marca), e é o que faz a interface parecer coesa em vez
- * de "cinza com um botão colorido".
+ * Suporta modo claro e modo escuro (`escuro: true`). No modo escuro,
+ * as superfícies e textos são calculados preservando o matiz da primária,
+ * garantindo conformidade com WCAG AA.
  *
  * @param {{primaria: string, secundaria: string, terciaria: string}} cores
+ * @param {{ escuro?: boolean }} [opcoes]
  * @returns {Record<string, string>} mapa nome-do-token → hex
  */
-export function derivarPaleta(cores = {}) {
+export function derivarPaleta(cores = {}, { escuro = false } = {}) {
   const { primaria, secundaria, terciaria } = { ...PALETA_PADRAO, ...cores };
 
   const p = papel(primaria);
   const s = papel(secundaria);
   const t = papel(terciaria);
 
-  // Neutros: matiz da primária, croma quase zero.
+  // Neutros: matiz da primária, croma sutil para harmonia com a marca.
   const matiz = hexParaOklch(primaria);
   const neutro = { C: Math.min(matiz.C, 0.012), h: matiz.h };
   const neutroVariante = { C: Math.min(matiz.C, 0.028), h: matiz.h };
+
+  const neutros = escuro
+    ? {
+        'background': tom(neutro, 14),
+        'surface': tom(neutro, 18),
+        'surface-container-lowest': tom(neutro, 11),
+        'surface-container-low': tom(neutro, 21),
+        'surface-container': tom(neutro, 25),
+        'surface-container-high': tom(neutro, 30),
+        'surface-container-highest': tom(neutro, 35),
+        'on-surface': tom(neutro, 94),
+        'on-surface-variant': tom(neutroVariante, 80),
+        'outline': tom(neutroVariante, 58),
+        'outline-variant': tom(neutroVariante, 30),
+      }
+    : {
+        'background': tom(neutro, 99),
+        'surface': '#ffffff',
+        'surface-container-lowest': '#ffffff',
+        'surface-container-low': tom(neutro, 97),
+        'surface-container': tom(neutro, 95),
+        'surface-container-high': tom(neutro, 93),
+        'surface-container-highest': tom(neutro, 91),
+        'on-surface': tom(neutro, 12),
+        'on-surface-variant': tom(neutroVariante, 32),
+        'outline': tom(neutroVariante, 52),
+        'outline-variant': tom(neutroVariante, 82),
+      };
+
+  const fundoGrafico = escuro ? neutros['surface'] : '#ffffff';
 
   return {
     'primary': p.base,
@@ -222,46 +252,32 @@ export function derivarPaleta(cores = {}) {
     'tertiary-container': t.container,
     'on-tertiary-container': t.onContainer,
 
-    'background': tom(neutro, 99),
-    'surface': '#ffffff',
-    'surface-container-lowest': '#ffffff',
-    'surface-container-low': tom(neutro, 97),
-    'surface-container': tom(neutro, 95),
-    'surface-container-high': tom(neutro, 93),
-    'surface-container-highest': tom(neutro, 91),
-    'on-surface': tom(neutro, 12),
-    'on-surface-variant': tom(neutroVariante, 32),
-    'outline': tom(neutroVariante, 52),
-    'outline-variant': tom(neutroVariante, 82),
+    ...neutros,
 
     // Cores de estado são de sistema: não acompanham a marca, porque o
     // significado ("algo deu errado", "aprovado") vale mais que a
-    // identidade visual. O laranja original (#e65100) dava só 3.79:1
-    // com texto branco — abaixo de AA — e foi escurecido.
+    // identidade visual.
     'error': '#ba1a1a',
     'on-error': '#ffffff',
-    'error-container': '#ffdad6',
-    'on-error-container': '#410002',
+    'error-container': escuro ? '#93000a' : '#ffdad6',
+    'on-error-container': escuro ? '#ffdad6' : '#410002',
     'warning': '#c94400',
     'on-warning': '#ffffff',
-    'warning-container': '#ffe0b2',
-    'on-warning-container': '#3b1a00',
+    'warning-container': escuro ? '#7e2a00' : '#ffe0b2',
+    'on-warning-container': escuro ? '#ffe0b2' : '#3b1a00',
     'success': '#2e7d32',
     'on-success': '#ffffff',
-    'success-container': '#d7f0d5',
-    'on-success-container': '#0b2e0d',
+    'success-container': escuro ? '#1b5e20' : '#d7f0d5',
+    'on-success-container': escuro ? '#d7f0d5' : '#0b2e0d',
     'info': '#1565c0',
     'on-info': '#ffffff',
-    'info-container': '#d6e6ff',
-    'on-info-container': '#001a3d',
+    'info-container': escuro ? '#0d47a1' : '#d6e6ff',
+    'on-info-container': escuro ? '#d6e6ff' : '#001a3d',
 
-    // Marcas de gráfico: mesmas cores da marca, mas escurecidas até o piso
-    // de 3:1 contra a superfície. Cada gráfico do dashboard tem uma única
-    // série, então não existe paleta categórica a validar aqui — o que
-    // importa é a marca ser visível.
-    'chart-1': corParaGrafico(primaria),
-    'chart-2': corParaGrafico(terciaria),
-    'chart-3': corParaGrafico(secundaria),
+    // Marcas de gráfico: mesmas cores da marca, com contraste calibrado
+    'chart-1': corParaGrafico(primaria, fundoGrafico),
+    'chart-2': corParaGrafico(terciaria, fundoGrafico),
+    'chart-3': corParaGrafico(secundaria, fundoGrafico),
   };
 }
 

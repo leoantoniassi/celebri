@@ -10,20 +10,23 @@ TRUNCATE
 RESTART IDENTITY CASCADE;
 
 -- ------------------------------------------------------------
--- Este arquivo é anterior à migration 005 (multilocação) e nunca foi
--- atualizado para preencher emp_id. Em vez de reescrever as 300+ linhas
--- abaixo, define um DEFAULT temporário em cada coluna *_emp_id apontando
--- pro tenant inaugural (mais-alegria) — removido no fim do arquivo.
+-- Garante empresa inaugural e define DEFAULT temporário em cada coluna
+-- *_emp_id apontando para a empresa (mais-alegria) — removido no fim do arquivo.
 -- ------------------------------------------------------------
 DO $$
 DECLARE
     v_emp_id UUID;
 BEGIN
+    INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
+    VALUES ('Mais Alegria', 'Mais Alegria', 'mais-alegria')
+    ON CONFLICT (emp_slug) DO NOTHING;
+
     SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'mais-alegria';
     IF v_emp_id IS NULL THEN
-        RAISE EXCEPTION 'Empresa "mais-alegria" não encontrada — rode as migrations antes do seed.';
+        RAISE EXCEPTION 'Empresa "mais-alegria" não encontrada.';
     END IF;
 
+    -- Aplica DEFAULT temporário para tabelas multilocadas
     EXECUTE format('ALTER TABLE usuarios ALTER COLUMN usr_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE locais ALTER COLUMN loc_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE funcoes ALTER COLUMN fnc_emp_id SET DEFAULT %L', v_emp_id);
@@ -36,10 +39,10 @@ BEGIN
     EXECUTE format('ALTER TABLE orcamentos ALTER COLUMN orc_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE eventos ALTER COLUMN evt_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE documentos ALTER COLUMN doc_emp_id SET DEFAULT %L', v_emp_id);
-    EXECUTE format('ALTER TABLE catalogos ALTER COLUMN cat_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE escala ALTER COLUMN esc_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE evento_produto ALTER COLUMN evp_emp_id SET DEFAULT %L', v_emp_id);
     EXECUTE format('ALTER TABLE orcamento_produto ALTER COLUMN orp_emp_id SET DEFAULT %L', v_emp_id);
+    EXECUTE format('ALTER TABLE catalogos ALTER COLUMN cat_emp_id SET DEFAULT %L', v_emp_id);
 END $$;
 
 -- 0. USUARIOS
@@ -385,20 +388,26 @@ INSERT INTO catalogos (cat_titulo, cat_descricao, cat_preco_base, cat_ativo) VAL
 -- devem sobreviver ao seed (inserts fora daqui continuam exigindo emp_id
 -- explícito, como esperado pelo resto da aplicação).
 -- ------------------------------------------------------------
-ALTER TABLE usuarios ALTER COLUMN usr_emp_id DROP DEFAULT;
-ALTER TABLE locais ALTER COLUMN loc_emp_id DROP DEFAULT;
-ALTER TABLE funcoes ALTER COLUMN fnc_emp_id DROP DEFAULT;
-ALTER TABLE categorias_fornecedor ALTER COLUMN caf_emp_id DROP DEFAULT;
-ALTER TABLE categorias_produto ALTER COLUMN cap_emp_id DROP DEFAULT;
-ALTER TABLE clientes ALTER COLUMN cli_emp_id DROP DEFAULT;
-ALTER TABLE fornecedores ALTER COLUMN for_emp_id DROP DEFAULT;
-ALTER TABLE funcionarios ALTER COLUMN fun_emp_id DROP DEFAULT;
-ALTER TABLE produtos ALTER COLUMN prd_emp_id DROP DEFAULT;
-ALTER TABLE orcamentos ALTER COLUMN orc_emp_id DROP DEFAULT;
-ALTER TABLE eventos ALTER COLUMN evt_emp_id DROP DEFAULT;
-ALTER TABLE documentos ALTER COLUMN doc_emp_id DROP DEFAULT;
-ALTER TABLE catalogos ALTER COLUMN cat_emp_id DROP DEFAULT;
-ALTER TABLE escala ALTER COLUMN esc_emp_id DROP DEFAULT;
-ALTER TABLE evento_produto ALTER COLUMN evp_emp_id DROP DEFAULT;
-ALTER TABLE orcamento_produto ALTER COLUMN orp_emp_id DROP DEFAULT;
+DO $$
+BEGIN
+    ALTER TABLE usuarios ALTER COLUMN usr_emp_id DROP DEFAULT;
+    ALTER TABLE locais ALTER COLUMN loc_emp_id DROP DEFAULT;
+    ALTER TABLE funcoes ALTER COLUMN fnc_emp_id DROP DEFAULT;
+    ALTER TABLE categorias_fornecedor ALTER COLUMN caf_emp_id DROP DEFAULT;
+    ALTER TABLE categorias_produto ALTER COLUMN cap_emp_id DROP DEFAULT;
+    ALTER TABLE clientes ALTER COLUMN cli_emp_id DROP DEFAULT;
+    ALTER TABLE fornecedores ALTER COLUMN for_emp_id DROP DEFAULT;
+    ALTER TABLE funcionarios ALTER COLUMN fun_emp_id DROP DEFAULT;
+    ALTER TABLE produtos ALTER COLUMN prd_emp_id DROP DEFAULT;
+    ALTER TABLE orcamentos ALTER COLUMN orc_emp_id DROP DEFAULT;
+    ALTER TABLE eventos ALTER COLUMN evt_emp_id DROP DEFAULT;
+    ALTER TABLE documentos ALTER COLUMN doc_emp_id DROP DEFAULT;
+    ALTER TABLE catalogos ALTER COLUMN cat_emp_id DROP DEFAULT;
+    ALTER TABLE escala ALTER COLUMN esc_emp_id DROP DEFAULT;
+    ALTER TABLE evento_produto ALTER COLUMN evp_emp_id DROP DEFAULT;
+    ALTER TABLE orcamento_produto ALTER COLUMN orp_emp_id DROP DEFAULT;
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
+
 

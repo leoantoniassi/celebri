@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { formatCurrency } from '../../utils/formatters';
 import Toast from '../../components/Toast';
+import WhatsAppIcon from '../../components/WhatsAppIcon';
 
 const EMPTY_FORM = { clienteId: '', nome: '', valorTotal: 0, dataValidade: '', dataEvento: '', horarioTermino: '', observacoes: '', localId: '', produtos: [], qtdPessoas: 0, qtdAdultos: 0, qtdCriancas: 0, qtdBebes: 0 };
 
@@ -264,7 +265,7 @@ export default function OrcamentosPage() {
                           className="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center hover:scale-110 transition-all shadow-md shadow-secondary/20 mr-1"
                           title="WhatsApp"
                         >
-                          <span className="material-symbols-outlined text-sm filled">chat</span>
+                          <WhatsAppIcon className="w-4 h-4" />
                         </button>
                         {o.status === 'pendente' && (
                           <>

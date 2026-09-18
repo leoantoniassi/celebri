@@ -22,7 +22,7 @@ export default function LoginPage() {
       await login(email, senha);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao fazer login');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }

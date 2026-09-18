@@ -1,32 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FEDC57;
-  --color-on-primary: #402d00;
-  --color-primary-container: #fff1db;
-  --color-on-primary-container: #584000;
-  --color-secondary: #7DBA00;
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: #d6f599;
-  --color-on-secondary-container: #233600;
-  --color-tertiary: #6600A1;
+  --color-primary: #1CEAFF;
+  --color-on-primary: #021a1d;
+  --color-primary-container: #a9f3fd;
+  --color-on-primary-container: #021a1d;
+  --color-secondary: #FF45FF;
+  --color-on-secondary: #29012a;
+  --color-secondary-container: #ffd5fd;
+  --color-on-secondary-container: #29012a;
+  --color-tertiary: #1F357F;
   --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #f0e6ff;
-  --color-on-tertiary-container: #24003d;
-  --color-background: #fdfcf5;
+  --color-tertiary-container: #dae5fe;
+  --color-on-tertiary-container: #04034f;
+  
+  /* Cores padrão (Tema Claro) */
+  --color-background: #fafcfd;
   --color-surface: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f7f4ea;
-  --color-surface-container: #f1eee4;
-  --color-surface-container-high: #ebe8de;
-  --color-surface-container-highest: #e5e2d8;
-  --color-on-surface: #1d1c16;
-  --color-on-surface-variant: #4a4639;
-  --color-outline: #7b7768;
-  --color-outline-variant: #cbc7b6;
-  /* Cores de estado. Não acompanham a marca do buffet: o significado
-     ("aprovado", "cancelado") vale mais que a identidade visual, e o
-     usuário aprende a associá-las. Todos os pares passam em WCAG AA. */
+  --color-surface-container-low: #f3f6f6;
+  --color-surface-container: #ecefef;
+  --color-surface-container-high: #dfeaec;
+  --color-surface-container-highest: #d9e4e5;
+  --color-on-surface: #020708;
+  --color-on-surface-variant: #21373a;
+  --color-outline: #566e71;
+  --color-outline-variant: #b0cacd;
+
+  /* Cores de estado (mantidas iguais para consistência) */
   --color-success: #2e7d32;
   --color-on-success: #ffffff;
   --color-success-container: #d7f0d5;
@@ -49,12 +50,30 @@
   --font-label: "Inter", sans-serif;
 }
 
+/* Redefinição de variáveis para o Tema Escuro quando a classe .dark estiver ativa */
+.dark {
+  /* Fundo principal em tom carvão profundo (não preto chapado #000000) */
+  --color-background: #111417;
+  /* Superfícies principais (cards, seções) com tom suave contrastando do fundo */
+  --color-surface: #181d22;
+  --color-surface-container-lowest: #0d1012;
+  --color-surface-container-low: #1e2429;
+  --color-surface-container: #242b32;
+  --color-surface-container-high: #2b333b;
+  --color-surface-container-highest: #333c46;
+  --color-on-surface: #edf2f5;
+  --color-on-surface-variant: #b6c4cf;
+  --color-outline: #6a7b8a;
+  --color-outline-variant: #2e3842;
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--color-background);
   color: var(--color-on-surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, .font-headline {
@@ -75,8 +94,6 @@ h1, h2, h3, .font-headline {
   box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.04);
 }
 
-/* Acompanha a cor do tenant: o tom final é a primária levemente
-   escurecida, em vez de um hex fixo. */
 .brand-gradient {
   background: linear-gradient(
     135deg,
@@ -89,7 +106,6 @@ h1, h2, h3, .font-headline {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-outline-variant); border-radius: 10px; }
 
-/* Animations */
 @keyframes slideInRight {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
@@ -117,16 +133,12 @@ h1, h2, h3, .font-headline {
   animation: slideInDown 0.3s ease-out;
 }
 
-/* Usada em Sidebar.jsx; nunca chegou a ser definida. */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-outline-variant);
   border-radius: 10px;
 }
 
-/* Barra de progresso das telas de definir/redefinir senha. A animação era
-   referenciada em DefinirSenhaPage.jsx e RedefinirSenhaPage.jsx, mas o
-   @keyframes não existia — a barra ficava parada. */
 @keyframes progress-bar {
   from { width: 100%; }
   to   { width: 0%; }

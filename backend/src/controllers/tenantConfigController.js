@@ -45,8 +45,28 @@ async function obterConfig(req, res, next) {
 // Gerente do buffet edita a própria identidade visual.
 async function atualizarConfig(req, res, next) {
   try {
-    const empresa = await Empresa.findOne({ where: { id: req.user.empresaId } });
-    if (!empresa) return fail(res, 'Empresa não encontrada.', 404);
+    let empresa = null;
+
+    if (req.user?.empresaId) {
+      empresa = await Empresa.findOne({ where: { id: req.user.empresaId } });
+    }
+
+    if (!empresa && req.user?.id) {
+      const { Usuario } = require('../models');
+      const usuario = await Usuario.findByPk(req.user.id, { ignoraTenant: true });
+      if (usuario?.empresaId) {
+        empresa = await Empresa.findByPk(usuario.empresaId);
+      }
+    }
+
+    if (!empresa) {
+      const { empresa: empresaResolvida } = await resolverTenant(req);
+      empresa = empresaResolvida;
+    }
+
+    if (!empresa) {
+      return fail(res, 'Empresa não encontrada. Por favor, saia e faça login novamente.', 404);
+    }
 
     const { nomeFantasia, logoUrl, cores } = req.body;
     const alteracoes = {};
@@ -59,12 +79,25 @@ async function atualizarConfig(req, res, next) {
     }
 
     if (logoUrl !== undefined) {
-      const valor = logoUrl === null ? null : String(logoUrl).trim();
-      if (valor && !/^https?:\/\//i.test(valor)) {
-        return fail(res, 'A logo deve ser uma URL http(s) válida.');
-      }
-      if (valor && valor.length > 255) {
-        return fail(res, 'A URL da logo deve ter no máximo 255 caracteres.');
+      let valor = logoUrl === null ? null : String(logoUrl).trim();
+      if (valor) {
+        // Se usuário omitiu o protocolo (ex: "meusite.com/logo.png"), normaliza para https://
+        if (/^\/\//.test(valor)) {
+          valor = `https:${valor}`;
+        } else if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(valor)) {
+          valor = `https://${valor}`;
+        }
+
+        const ehHttp = /^https?:\/\//i.test(valor);
+        const ehDataImage = /^data:image\/(png|jpeg|jpg|webp|svg\+xml|gif);base64,/i.test(valor);
+
+        if (!ehHttp && !ehDataImage) {
+          return fail(res, 'A logo deve ser uma URL http(s) válida.');
+        }
+
+        if (valor.length > 2048) {
+          return fail(res, 'A URL da logo deve ter no máximo 2048 caracteres.');
+        }
       }
       alteracoes.logoUrl = valor || null;
     }
