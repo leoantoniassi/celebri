@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <BrandLogo tamanho="md" className="shadow-sm" />
             <div>
               <h1 className="text-xl font-extrabold text-on-surface leading-none font-headline">{nomeFantasia}</h1>
-              <p className="text-[10px] uppercase tracking-widest text-on-surface-variant/70 mt-1">Festify</p>
+              <p className="text-[10px] uppercase tracking-widest text-on-surface-variant/70 mt-1">Celebri</p>
             </div>
           </div>
         </div>
