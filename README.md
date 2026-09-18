@@ -1,5 +1,9 @@
 # DOCUMENTAÇÃO DO PROJETO MAIS ALEGRIA
 
+> **Como rodar o ambiente local:** copie `.env.example` para `.env`, ajuste
+> `DB_PASS`/`JWT_SECRET` e rode `./dev-up.sh` (ou `bash dev-up.sh`) — sobe os
+> containers, aplica as migrations pendentes e roda o seed em um único passo.
+
 ## 1. Introdução
 
 O _Projeto Mais Alegria_ tem como objetivo desenvolver um sistema completo para a gestão de eventos e controle administrativo da equipe. A ausência de um fluxo centralizado para gerenciar contratos, informações de clientes e a escala de funcionários pode gerar desorganização e impactar a qualidade dos serviços prestados em eventos.

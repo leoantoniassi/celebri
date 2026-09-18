@@ -1,5 +1,5 @@
 -- ============================================================
--- FESTIFY — Migration 007: Atualiza padrão de cores inicial
+-- CELEBRI — Migration 007: Atualiza padrão de cores inicial
 -- ============================================================
 -- Define a nova paleta padrão oficial da plataforma:
 -- Primária:   #1CEAFF (Ciano vibrante)
