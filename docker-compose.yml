@@ -4,7 +4,7 @@ services:
   # ============================
   db:
     image: postgres:15-alpine
-    container_name: festify_db
+    container_name: celebri_db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -28,7 +28,7 @@ services:
   # ============================
   backend:
     build: ./backend
-    container_name: festify_api
+    container_name: celebri_api
     restart: unless-stopped
     environment:
       PORT: 3001
@@ -61,7 +61,7 @@ services:
   # ============================
   frontend:
     build: ./frontend
-    container_name: festify_web
+    container_name: celebri_web
     restart: unless-stopped
     ports:
       - "8080:80"

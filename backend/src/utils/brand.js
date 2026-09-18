@@ -2,7 +2,7 @@
 // Marca do tenant em textos voltados ao usuário final
 // ============================================================
 // Mensagens de WhatsApp e e-mails saem em nome do buffet contratante,
-// não do Festify. Antes o nome "Mais Alegria" estava fixo em 5
+// não do Celebri. Antes o nome "Mais Alegria" estava fixo em 5
 // controllers e 2 templates de e-mail — cada novo cliente exigiria
 // editar código.
 //
@@ -16,7 +16,7 @@ const TTL_MS = 5 * 60 * 1000;
 const cache = new Map(); // empresaId → { valor, expiraEm }
 
 const PADRAO = {
-  nomeFantasia: 'Festify',
+  nomeFantasia: 'Celebri',
   logoUrl: null,
   corPrimaria: '#FEDC57',
   corTexto: '#1a1a1a',

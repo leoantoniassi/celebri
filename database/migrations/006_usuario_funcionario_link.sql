@@ -1,7 +1,7 @@
 -- ============================================================
--- FESTIFY — Migration 006: vínculo Usuario ↔ Funcionario
+-- CELEBRI — Migration 006: vínculo Usuario ↔ Funcionario
 -- ============================================================
--- O app mobile (Festify Staff) precisa que um colaborador de campo
+-- O app mobile (Celebri Staff) precisa que um colaborador de campo
 -- (garçom, recreador, recepcionista — tabela `funcionarios`) consiga logar
 -- e ver as próprias escalas. Login hoje só existe para `usuarios`
 -- (gerente/operador, usado pelo painel web) e as duas tabelas não têm
@@ -33,4 +33,4 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_fun_id ON usuarios (usr_fun_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_funcionario ON usuarios (usr_fun_id)
     WHERE usr_fun_id IS NOT NULL;
 
-COMMENT ON COLUMN usuarios.usr_fun_id IS 'Funcionário de campo vinculado a esta conta de login (opcional). Usado pelo app mobile Festify Staff para resolver "minhas escalas".';
+COMMENT ON COLUMN usuarios.usr_fun_id IS 'Funcionário de campo vinculado a esta conta de login (opcional). Usado pelo app mobile Celebri Staff para resolver "minhas escalas".';

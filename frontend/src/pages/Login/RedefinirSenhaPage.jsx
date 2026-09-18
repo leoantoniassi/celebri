@@ -5,7 +5,7 @@ import BrandLogo from '../../components/BrandLogo';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function RedefinirSenhaPage() {
-  const nomeFantasia = useTheme()?.config?.nomeFantasia || 'Festify';
+  const nomeFantasia = useTheme()?.config?.nomeFantasia || 'Celebri';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 

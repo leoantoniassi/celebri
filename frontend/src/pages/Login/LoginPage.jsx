@@ -5,7 +5,7 @@ import BrandLogo from '../../components/BrandLogo';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function LoginPage() {
-  const nomeFantasia = useTheme()?.config?.nomeFantasia || 'Festify';
+  const nomeFantasia = useTheme()?.config?.nomeFantasia || 'Celebri';
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);

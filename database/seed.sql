@@ -44,8 +44,8 @@ END $$;
 
 -- 0. USUARIOS
 INSERT INTO usuarios (usr_nome, usr_email, usr_senha, usr_role) VALUES
-('Gerente',  'gerente@festify.com',  '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'gerente'),
-('Operador',  'operador@festify.com', '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'operador');
+('Gerente',  'gerente@celebri.com',  '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'gerente'),
+('Operador',  'operador@celebri.com', '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'operador');
 
 -- L. LOCAIS
 INSERT INTO locais (loc_nome, loc_logradouro, loc_numero, loc_bairro, loc_cidade, loc_estado, loc_cep, loc_capacidade_maxima) VALUES
@@ -282,6 +282,11 @@ INSERT INTO documentos (doc_cli_id, doc_evt_id, doc_nome_arquivo, doc_caminho_ur
 ((SELECT cli_id FROM clientes WHERE cli_nome = 'Samuel Dias'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Batizado do Samuel'), 'Contrato_BatizadodoSamuel.pdf', 'http://arquivos.maisalegria.com/docs/contrato_18.pdf', 'pdf'),
 ((SELECT cli_id FROM clientes WHERE cli_nome = 'Tatiana Monteiro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Despedida de Solteiro(a)'), 'Contrato_DespedidadeSolteiroa.pdf', 'http://arquivos.maisalegria.com/docs/contrato_19.pdf', 'pdf'),
 ((SELECT cli_id FROM clientes WHERE cli_nome = 'Vinicius Castro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de Fim de Ano'), 'Contrato_FestadeFimdeAno.pdf', 'http://arquivos.maisalegria.com/docs/contrato_20.pdf', 'pdf');
+
+-- Vincula a conta "Operador" a um funcionário de campo, para o app mobile
+-- (Celebri Staff) ter uma conta de teste pronta sem passo manual.
+UPDATE usuarios SET usr_fun_id = (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Alice Rodrigues')
+WHERE usr_email = 'operador@celebri.com';
 
 -- 8. ESCALA
 INSERT INTO escala (esc_evt_id, esc_fun_id, esc_observacoes) VALUES

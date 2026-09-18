@@ -165,7 +165,7 @@ async function listarPorEvento(req, res, next) {
 }
 
 // GET /api/escala/minhas
-// Escalas do funcionário vinculado ao usuário logado (app mobile Festify Staff)
+// Escalas do funcionário vinculado ao usuário logado (app mobile Celebri Staff)
 async function listarMinhas(req, res, next) {
   try {
     const { funcionarioId } = req.user;

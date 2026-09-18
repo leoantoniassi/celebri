@@ -12,12 +12,12 @@ import { derivarPaleta, aplicarPaleta, PALETA_PADRAO } from '../utils/theme';
 // inclusive os modificadores de opacidade tipo `bg-primary/20`.
 // ============================================================
 
-const CHAVE_CACHE = 'festify:tenant';
+const CHAVE_CACHE = 'celebri:tenant';
 
 const ThemeContext = createContext(null);
 
 const CONFIG_PADRAO = {
-  nomeFantasia: 'Festify',
+  nomeFantasia: 'Celebri',
   slug: null,
   logoUrl: null,
   cores: PALETA_PADRAO,

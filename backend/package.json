@@ -1,7 +1,7 @@
 {
-  "name": "festify-backend",
+  "name": "celebri-backend",
   "version": "1.0.0",
-  "description": "API do Festify — plataforma SaaS white label de gestão de eventos e buffets",
+  "description": "API do Celebri — plataforma SaaS white label de gestão de eventos e buffets",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",

@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   // Rotas públicas (login, recuperar senha, /tenant/config) não têm JWT,
   // então a empresa precisa ser identificada pelo slug. Em produção o
   // subdomínio já resolve; o header cobre dev e o app mobile.
-  const slug = localStorage.getItem('festify:slug');
+  const slug = localStorage.getItem('celebri:slug');
   if (slug) {
     config.headers['X-Tenant-Slug'] = slug;
   }

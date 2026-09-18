@@ -9,12 +9,12 @@
 // ============================================================
 const { Empresa } = require('../models');
 
-/** Extrai o slug de um Host tipo "alegria.festify.com.br". */
+/** Extrai o slug de um Host tipo "alegria.celebri.com.br". */
 function slugDoSubdominio(host) {
   if (!host) return null;
   const nome = String(host).split(':')[0];
   const partes = nome.split('.');
-  if (partes.length < 3) return null; // localhost, festify.com.br
+  if (partes.length < 3) return null; // localhost, celebri.com.br
   const candidato = partes[0].toLowerCase();
   return ['www', 'api', 'app'].includes(candidato) ? null : candidato;
 }

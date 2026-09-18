@@ -22,7 +22,7 @@ export default function BrandLogo({ tamanho = 'md', className = '' }) {
   const tema = useTheme();
   const config = tema?.config;
   const { caixa, icone } = TAMANHOS[tamanho] || TAMANHOS.md;
-  const nome = config?.nomeFantasia || 'Festify';
+  const nome = config?.nomeFantasia || 'Celebri';
 
   if (config?.logoUrl) {
     return (
@@ -47,5 +47,5 @@ export default function BrandLogo({ tamanho = 'md', className = '' }) {
 /** Nome fantasia do tenant, para títulos e cabeçalhos. */
 export function BrandName({ className = '' }) {
   const tema = useTheme();
-  return <span className={className}>{tema?.config?.nomeFantasia || 'Festify'}</span>;
+  return <span className={className}>{tema?.config?.nomeFantasia || 'Celebri'}</span>;
 }

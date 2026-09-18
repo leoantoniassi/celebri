@@ -1,5 +1,5 @@
 // ============================================================
-// FESTIFY — Express App
+// CELEBRI — Express App
 // ============================================================
 const express = require('express');
 const cors = require('cors');
@@ -36,7 +36,7 @@ app.use('/api/v1', routes);
 app.get('/api/health', (_req, res) => {
   res.json({
     success: true,
-    message: 'API Festify funcionando!',
+    message: 'API Celebri funcionando!',
     timestamp: new Date().toISOString(),
   });
 });

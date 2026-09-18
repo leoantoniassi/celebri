@@ -252,7 +252,7 @@ export default function ConfiguracoesPage() {
                 <p className="font-headline font-extrabold text-on-surface leading-none">
                   {form.nomeFantasia || 'Seu Buffet'}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant/70 mt-1">Festify</p>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant/70 mt-1">Celebri</p>
               </div>
             </div>
 

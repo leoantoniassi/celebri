@@ -1,5 +1,5 @@
 -- ============================================================
--- FESTIFY — Migration 004: tabela empresas (raiz da multilocação)
+-- CELEBRI — Migration 004: tabela empresas (raiz da multilocação)
 -- ============================================================
 -- Cada linha é um buffet/salão contratante do SaaS. É a partir daqui
 -- que sai a identidade visual white label (logo + 3 cores base) e o
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS empresas (
 CREATE INDEX IF NOT EXISTS idx_empresas_slug
     ON empresas (emp_slug) WHERE emp_deletado_em IS NULL;
 
-COMMENT ON TABLE  empresas                    IS 'Buffets/salões contratantes do SaaS Festify (tenants).';
+COMMENT ON TABLE  empresas                    IS 'Buffets/salões contratantes do SaaS Celebri (tenants).';
 COMMENT ON COLUMN empresas.emp_slug           IS 'Identificador público e estável. É o "código da empresa" informado no login.';
 COMMENT ON COLUMN empresas.emp_cor_primaria   IS 'Cor base do white label. As demais tonalidades Material 3 são derivadas no frontend.';
 COMMENT ON COLUMN empresas.emp_status         IS 'ativo | suspenso | cancelado. Suspenso bloqueia login mas preserva os dados.';

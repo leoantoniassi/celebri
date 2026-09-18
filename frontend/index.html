@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Festify — Gestão de Eventos</title>
+    <title>Celebri — Gestão de Eventos</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +17,7 @@
       // a cor do buffet, o que fica visível como um "pisca".
       (function () {
         try {
-          var cache = JSON.parse(localStorage.getItem('festify:tenant') || 'null');
+          var cache = JSON.parse(localStorage.getItem('celebri:tenant') || 'null');
           if (cache && cache.paleta) {
             var raiz = document.documentElement;
             Object.keys(cache.paleta).forEach(function (token) {

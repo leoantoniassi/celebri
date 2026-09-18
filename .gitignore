@@ -1,5 +1,5 @@
 # ============================================================
-# Festify - Git Ignore Rules
+# Celebri - Git Ignore Rules
 # ============================================================
 
 # ── Variáveis de Ambiente e Segredos ───────────────────────────
@@ -97,4 +97,4 @@ temp/
 .gemini/
 
 # ── Repositório Clonado Aninhado ───────────────────────────────
-festify/
+celebri/

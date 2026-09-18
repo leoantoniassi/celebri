@@ -1,5 +1,5 @@
 -- ============================================================
--- FESTIFY — Migration 005: multilocação (emp_id em todas as tabelas)
+-- CELEBRI — Migration 005: multilocação (emp_id em todas as tabelas)
 -- ============================================================
 -- Adiciona o vínculo de tenant nas 16 tabelas de negócio, faz o backfill
 -- apontando os dados existentes para a empresa inaugural, e converte as

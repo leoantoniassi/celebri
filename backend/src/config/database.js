@@ -1,5 +1,5 @@
 // ============================================================
-// FESTIFY — Configuração Sequelize + escopo automático de tenant
+// CELEBRI — Configuração Sequelize + escopo automático de tenant
 // ============================================================
 const { Sequelize, Op } = require('sequelize');
 const { getEmpresaId } = require('../utils/tenantContext');

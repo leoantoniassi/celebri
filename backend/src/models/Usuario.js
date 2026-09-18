@@ -18,7 +18,7 @@ const Usuario = sequelize.define('Usuario', {
     field: 'usr_emp_id',
   },
   // FK opcional para funcionarios — vincula a conta de login a um
-  // colaborador de campo, usado pelo app mobile Festify Staff.
+  // colaborador de campo, usado pelo app mobile Celebri Staff.
   funcionarioId: {
     type: DataTypes.UUID,
     allowNull: true,
