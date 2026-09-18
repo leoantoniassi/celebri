@@ -1,8 +1,14 @@
 # DOCUMENTAÇÃO DO PROJETO MAIS ALEGRIA
 
 > **Como rodar o ambiente local:** copie `.env.example` para `.env`, ajuste
-> `DB_PASS`/`JWT_SECRET` e rode `./dev-up.sh` (ou `bash dev-up.sh`) — sobe os
-> containers, aplica as migrations pendentes e roda o seed em um único passo.
+> `DB_PASS`/`JWT_SECRET` e rode o script de subida — sobe os containers,
+> aplica as migrations pendentes e roda o seed em um único passo.
+> - PowerShell (Windows): `.\dev-up.ps1`
+> - Bash (Mac/Linux, ou Git Bash no Windows): `./dev-up.sh`
+>
+> No Windows, se `bash ./dev-up.sh` der erro de WSL, é porque o `bash` do
+> PATH está resolvendo pro WSL em vez do Git Bash — use o `dev-up.ps1` ou
+> chame o Git Bash explicitamente: `& "C:\Program Files\Git\bin\bash.exe" ./dev-up.sh`.
 
 ## 1. Introdução
 
