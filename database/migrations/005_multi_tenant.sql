@@ -21,10 +21,13 @@ BEGIN
     -- Empresa inaugural: recebe todos os dados que já existem no banco.
     -- Mantém as cores originais do Mais Alegria como paleta padrão.
     INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
-    VALUES ('Mais Alegria', 'Mais Alegria', 'mais-alegria')
+    VALUES ('Celebri', 'Celebri', 'celebri')
     ON CONFLICT (emp_slug) DO NOTHING;
 
-    SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'mais-alegria';
+    SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'celebri';
+    IF v_emp_id IS NULL THEN
+        SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'mais-alegria';
+    END IF;
 
     FOR r IN
         SELECT * FROM (VALUES

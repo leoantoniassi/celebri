@@ -15,4 +15,4 @@ UPDATE empresas
 SET emp_cor_primaria = '#1CEAFF',
     emp_cor_secundaria = '#FF45FF',
     emp_cor_terciaria = '#1F357F'
-WHERE emp_slug = 'mais-alegria';
+WHERE emp_slug IN ('celebri', 'mais-alegria');

@@ -11,19 +11,52 @@ RESTART IDENTITY CASCADE;
 
 -- ------------------------------------------------------------
 -- Garante empresa inaugural e define DEFAULT temporário em cada coluna
--- *_emp_id apontando para a empresa (mais-alegria) — removido no fim do arquivo.
+-- *_emp_id apontando para a empresa (celebri) — removido no fim do arquivo.
 -- ------------------------------------------------------------
 DO $$
 DECLARE
-    v_emp_id UUID;
+    v_emp_id     UUID;
+    v_celebri_id UUID;
+    v_antigo_id  UUID;
 BEGIN
-    INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
-    VALUES ('Mais Alegria', 'Mais Alegria', 'mais-alegria')
-    ON CONFLICT (emp_slug) DO NOTHING;
+    IF EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'mais-alegria') AND NOT EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'celebri') THEN
+        UPDATE empresas
+        SET emp_nome = 'Celebri', emp_nome_fantasia = 'Celebri', emp_slug = 'celebri'
+        WHERE emp_slug = 'mais-alegria';
+    ELSIF EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'mais-alegria') AND EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'celebri') THEN
+        SELECT emp_id INTO v_celebri_id FROM empresas WHERE emp_slug = 'celebri';
+        SELECT emp_id INTO v_antigo_id  FROM empresas WHERE emp_slug = 'mais-alegria';
 
-    SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'mais-alegria';
+        UPDATE usuarios SET usr_emp_id = v_celebri_id WHERE usr_emp_id = v_antigo_id;
+        UPDATE locais SET loc_emp_id = v_celebri_id WHERE loc_emp_id = v_antigo_id;
+        UPDATE funcoes SET fnc_emp_id = v_celebri_id WHERE fnc_emp_id = v_antigo_id;
+        UPDATE categorias_fornecedor SET caf_emp_id = v_celebri_id WHERE caf_emp_id = v_antigo_id;
+        UPDATE categorias_produto SET cap_emp_id = v_celebri_id WHERE cap_emp_id = v_antigo_id;
+        UPDATE clientes SET cli_emp_id = v_celebri_id WHERE cli_emp_id = v_antigo_id;
+        UPDATE fornecedores SET for_emp_id = v_celebri_id WHERE for_emp_id = v_antigo_id;
+        UPDATE funcionarios SET fun_emp_id = v_celebri_id WHERE fun_emp_id = v_antigo_id;
+        UPDATE produtos SET prd_emp_id = v_celebri_id WHERE prd_emp_id = v_antigo_id;
+        UPDATE orcamentos SET orc_emp_id = v_celebri_id WHERE orc_emp_id = v_antigo_id;
+        UPDATE eventos SET evt_emp_id = v_celebri_id WHERE evt_emp_id = v_antigo_id;
+        UPDATE documentos SET doc_emp_id = v_celebri_id WHERE doc_emp_id = v_antigo_id;
+        UPDATE escala SET esc_emp_id = v_celebri_id WHERE esc_emp_id = v_antigo_id;
+        UPDATE evento_produto SET evp_emp_id = v_celebri_id WHERE evp_emp_id = v_antigo_id;
+        UPDATE orcamento_produto SET orp_emp_id = v_celebri_id WHERE orp_emp_id = v_antigo_id;
+        UPDATE catalogos SET cat_emp_id = v_celebri_id WHERE cat_emp_id = v_antigo_id;
+
+        DELETE FROM empresas WHERE emp_id = v_antigo_id;
+    ELSE
+        INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
+        VALUES ('Celebri', 'Celebri', 'celebri')
+        ON CONFLICT (emp_slug) DO UPDATE SET emp_nome_fantasia = 'Celebri', emp_nome = 'Celebri';
+    END IF;
+
+    SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'celebri';
     IF v_emp_id IS NULL THEN
-        RAISE EXCEPTION 'Empresa "mais-alegria" não encontrada.';
+        SELECT emp_id INTO v_emp_id FROM empresas WHERE emp_slug = 'mais-alegria';
+    END IF;
+    IF v_emp_id IS NULL THEN
+        RAISE EXCEPTION 'Empresa "celebri" não encontrada.';
     END IF;
 
     -- Aplica DEFAULT temporário para tabelas multilocadas
@@ -265,26 +298,26 @@ INSERT INTO eventos (evt_cli_id, evt_orc_id, evt_loc_id, evt_nome, evt_data_even
 
 -- 7. DOCUMENTOS
 INSERT INTO documentos (doc_cli_id, doc_evt_id, doc_nome_arquivo, doc_caminho_url, doc_tipo_arquivo) VALUES
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Ana Souza'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Aniversário da Ana'), 'Contrato_AniversriodaAna.pdf', 'http://arquivos.maisalegria.com/docs/contrato_1.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Bruno Lima'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Casamento Bruno e Carla'), 'Contrato_CasamentoBrunoeCarla.pdf', 'http://arquivos.maisalegria.com/docs/contrato_2.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Carlos Santos'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Confraternização Empresa X'), 'Contrato_ConfraternizaoEmpresaX.pdf', 'http://arquivos.maisalegria.com/docs/contrato_3.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Daniela Ferreira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Chá de Bebê da Daniela'), 'Contrato_ChdeBebdaDaniela.pdf', 'http://arquivos.maisalegria.com/docs/contrato_4.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Eduardo Costa'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de 15 Anos da Fernanda'), 'Contrato_Festade15AnosdaFernanda.pdf', 'http://arquivos.maisalegria.com/docs/contrato_5.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Fernanda Alves'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Formatura do Gabriel'), 'Contrato_FormaturadoGabriel.pdf', 'http://arquivos.maisalegria.com/docs/contrato_6.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Gabriel Pereira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Bodas de Prata Helena'), 'Contrato_BodasdePrataHelena.pdf', 'http://arquivos.maisalegria.com/docs/contrato_7.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Helena Ribeiro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Encontro de Ex-Alunos'), 'Contrato_EncontrodeExAlunos.pdf', 'http://arquivos.maisalegria.com/docs/contrato_8.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Igor Rocha'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa Infantil do João'), 'Contrato_FestaInfantildoJoo.pdf', 'http://arquivos.maisalegria.com/docs/contrato_9.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Juliana Mendes'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Baile de Máscaras'), 'Contrato_BailedeMscaras.pdf', 'http://arquivos.maisalegria.com/docs/contrato_10.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Leonardo Silva'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Lançamento de Produto'), 'Contrato_LanamentodeProduto.pdf', 'http://arquivos.maisalegria.com/docs/contrato_11.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Mariana Carvalho'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa Junina do Bairro'), 'Contrato_FestaJuninadoBairro.pdf', 'http://arquivos.maisalegria.com/docs/contrato_12.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Nicolas Martins'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Reveillon VIP'), 'Contrato_ReveillonVIP.pdf', 'http://arquivos.maisalegria.com/docs/contrato_13.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Olivia Barros'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa à Fantasia'), 'Contrato_FestaFantasia.pdf', 'http://arquivos.maisalegria.com/docs/contrato_14.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Pedro Gomes'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Casamento Mariana e Pedro'), 'Contrato_CasamentoMarianaePedro.pdf', 'http://arquivos.maisalegria.com/docs/contrato_15.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Quintino Pires'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Aniversário Surpresa do Nicolas'), 'Contrato_AniversrioSurpresadoNicolas.pdf', 'http://arquivos.maisalegria.com/docs/contrato_16.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Rafaela Nogueira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Chá de Panela da Rafaela'), 'Contrato_ChdePaneladaRafaela.pdf', 'http://arquivos.maisalegria.com/docs/contrato_17.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Samuel Dias'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Batizado do Samuel'), 'Contrato_BatizadodoSamuel.pdf', 'http://arquivos.maisalegria.com/docs/contrato_18.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Tatiana Monteiro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Despedida de Solteiro(a)'), 'Contrato_DespedidadeSolteiroa.pdf', 'http://arquivos.maisalegria.com/docs/contrato_19.pdf', 'pdf'),
-((SELECT cli_id FROM clientes WHERE cli_nome = 'Vinicius Castro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de Fim de Ano'), 'Contrato_FestadeFimdeAno.pdf', 'http://arquivos.maisalegria.com/docs/contrato_20.pdf', 'pdf');
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Ana Souza'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Aniversário da Ana'), 'Contrato_AniversriodaAna.pdf', 'http://arquivos.celebri.com/docs/contrato_1.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Bruno Lima'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Casamento Bruno e Carla'), 'Contrato_CasamentoBrunoeCarla.pdf', 'http://arquivos.celebri.com/docs/contrato_2.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Carlos Santos'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Confraternização Empresa X'), 'Contrato_ConfraternizaoEmpresaX.pdf', 'http://arquivos.celebri.com/docs/contrato_3.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Daniela Ferreira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Chá de Bebê da Daniela'), 'Contrato_ChdeBebdaDaniela.pdf', 'http://arquivos.celebri.com/docs/contrato_4.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Eduardo Costa'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de 15 Anos da Fernanda'), 'Contrato_Festade15AnosdaFernanda.pdf', 'http://arquivos.celebri.com/docs/contrato_5.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Fernanda Alves'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Formatura do Gabriel'), 'Contrato_FormaturadoGabriel.pdf', 'http://arquivos.celebri.com/docs/contrato_6.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Gabriel Pereira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Bodas de Prata Helena'), 'Contrato_BodasdePrataHelena.pdf', 'http://arquivos.celebri.com/docs/contrato_7.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Helena Ribeiro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Encontro de Ex-Alunos'), 'Contrato_EncontrodeExAlunos.pdf', 'http://arquivos.celebri.com/docs/contrato_8.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Igor Rocha'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa Infantil do João'), 'Contrato_FestaInfantildoJoo.pdf', 'http://arquivos.celebri.com/docs/contrato_9.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Juliana Mendes'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Baile de Máscaras'), 'Contrato_BailedeMscaras.pdf', 'http://arquivos.celebri.com/docs/contrato_10.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Leonardo Silva'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Lançamento de Produto'), 'Contrato_LanamentodeProduto.pdf', 'http://arquivos.celebri.com/docs/contrato_11.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Mariana Carvalho'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa Junina do Bairro'), 'Contrato_FestaJuninadoBairro.pdf', 'http://arquivos.celebri.com/docs/contrato_12.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Nicolas Martins'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Reveillon VIP'), 'Contrato_ReveillonVIP.pdf', 'http://arquivos.celebri.com/docs/contrato_13.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Olivia Barros'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa à Fantasia'), 'Contrato_FestaFantasia.pdf', 'http://arquivos.celebri.com/docs/contrato_14.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Pedro Gomes'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Casamento Mariana e Pedro'), 'Contrato_CasamentoMarianaePedro.pdf', 'http://arquivos.celebri.com/docs/contrato_15.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Quintino Pires'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Aniversário Surpresa do Nicolas'), 'Contrato_AniversrioSurpresadoNicolas.pdf', 'http://arquivos.celebri.com/docs/contrato_16.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Rafaela Nogueira'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Chá de Panela da Rafaela'), 'Contrato_ChdePaneladaRafaela.pdf', 'http://arquivos.celebri.com/docs/contrato_17.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Samuel Dias'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Batizado do Samuel'), 'Contrato_BatizadodoSamuel.pdf', 'http://arquivos.celebri.com/docs/contrato_18.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Tatiana Monteiro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Despedida de Solteiro(a)'), 'Contrato_DespedidadeSolteiroa.pdf', 'http://arquivos.celebri.com/docs/contrato_19.pdf', 'pdf'),
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Vinicius Castro'), (SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de Fim de Ano'), 'Contrato_FestadeFimdeAno.pdf', 'http://arquivos.celebri.com/docs/contrato_20.pdf', 'pdf');
 
 -- Vincula a conta "Operador" a um funcionário de campo, para o app mobile
 -- (Celebri Staff) ter uma conta de teste pronta sem passo manual.

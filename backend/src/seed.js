@@ -39,20 +39,54 @@ async function seed() {
       console.warn("⚠️ Aviso durante migrations no seed:", migErr.message);
     }
 
-    // 2. Garante que a empresa padrão inaugural existe
+    // 2. Garante que a empresa padrão inaugural existe como Celebri
     await sequelize.query(`
-      INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
-      VALUES ('Mais Alegria', 'Mais Alegria', 'mais-alegria')
-      ON CONFLICT (emp_slug) DO NOTHING;
+      DO $$
+      DECLARE
+        v_celebri_id UUID;
+        v_antigo_id  UUID;
+      BEGIN
+        IF EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'mais-alegria') AND NOT EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'celebri') THEN
+          UPDATE empresas
+          SET emp_nome = 'Celebri', emp_nome_fantasia = 'Celebri', emp_slug = 'celebri'
+          WHERE emp_slug = 'mais-alegria';
+        ELSIF EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'mais-alegria') AND EXISTS (SELECT 1 FROM empresas WHERE emp_slug = 'celebri') THEN
+          SELECT emp_id INTO v_celebri_id FROM empresas WHERE emp_slug = 'celebri';
+          SELECT emp_id INTO v_antigo_id  FROM empresas WHERE emp_slug = 'mais-alegria';
+
+          UPDATE usuarios SET usr_emp_id = v_celebri_id WHERE usr_emp_id = v_antigo_id;
+          UPDATE locais SET loc_emp_id = v_celebri_id WHERE loc_emp_id = v_antigo_id;
+          UPDATE funcoes SET fnc_emp_id = v_celebri_id WHERE fnc_emp_id = v_antigo_id;
+          UPDATE categorias_fornecedor SET caf_emp_id = v_celebri_id WHERE caf_emp_id = v_antigo_id;
+          UPDATE categorias_produto SET cap_emp_id = v_celebri_id WHERE cap_emp_id = v_antigo_id;
+          UPDATE clientes SET cli_emp_id = v_celebri_id WHERE cli_emp_id = v_antigo_id;
+          UPDATE fornecedores SET for_emp_id = v_celebri_id WHERE for_emp_id = v_antigo_id;
+          UPDATE funcionarios SET fun_emp_id = v_celebri_id WHERE fun_emp_id = v_antigo_id;
+          UPDATE produtos SET prd_emp_id = v_celebri_id WHERE prd_emp_id = v_antigo_id;
+          UPDATE orcamentos SET orc_emp_id = v_celebri_id WHERE orc_emp_id = v_antigo_id;
+          UPDATE eventos SET evt_emp_id = v_celebri_id WHERE evt_emp_id = v_antigo_id;
+          UPDATE documentos SET doc_emp_id = v_celebri_id WHERE doc_emp_id = v_antigo_id;
+          UPDATE escala SET esc_emp_id = v_celebri_id WHERE esc_emp_id = v_antigo_id;
+          UPDATE evento_produto SET evp_emp_id = v_celebri_id WHERE evp_emp_id = v_antigo_id;
+          UPDATE orcamento_produto SET orp_emp_id = v_celebri_id WHERE orp_emp_id = v_antigo_id;
+          UPDATE catalogos SET cat_emp_id = v_celebri_id WHERE cat_emp_id = v_antigo_id;
+
+          DELETE FROM empresas WHERE emp_id = v_antigo_id;
+        ELSE
+          INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
+          VALUES ('Celebri', 'Celebri', 'celebri')
+          ON CONFLICT (emp_slug) DO UPDATE SET emp_nome_fantasia = 'Celebri', emp_nome = 'Celebri';
+        END IF;
+      END $$;
     `);
 
     const [empRows] = await sequelize.query(
-      `SELECT emp_id FROM empresas WHERE emp_slug = 'mais-alegria' LIMIT 1;`
+      `SELECT emp_id FROM empresas WHERE emp_slug = 'celebri' LIMIT 1;`
     );
     const empId = empRows[0]?.emp_id;
 
     if (!empId) {
-      throw new Error("Não foi possível resolver a empresa padrão 'mais-alegria'.");
+      throw new Error("Não foi possível resolver a empresa padrão 'celebri'.");
     }
 
     // 3. Aplica temporariamente o DEFAULT empId para compatibilidade com os inserts do seed.sql
