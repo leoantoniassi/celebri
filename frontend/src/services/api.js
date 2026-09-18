@@ -24,6 +24,7 @@ api.interceptors.request.use((config) => {
 });
 
 // Interceptor: trata erros de resposta (como expiração do token)
+// Usa CustomEvent para desacoplar do AuthContext e evitar dependência circular.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,10 +33,16 @@ api.interceptors.response.use(
       const isLoginRequest = error.config?.url?.includes('/auth/login');
 
       if (!isLoginRequest) {
-        if (status === 401 || status === 403 || (status === 404 && data?.message?.includes('Empresa não encontrada'))) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+        const isNaoAutorizado = status === 401 || status === 403;
+        const isEmpresaNaoEncontrada =
+          status === 404 && data?.message?.includes('Empresa não encontrada');
+
+        if (isNaoAutorizado || isEmpresaNaoEncontrada) {
+          // Delega o logout para o AuthContext via CustomEvent.
+          // Isso garante que o React gerencie o estado de autenticação
+          // de forma correta, sem recorrer a hard-redirects que perdem
+          // o histórico e não ativam os listeners do Router.
+          window.dispatchEvent(new CustomEvent('celebri:sessao-expirada'));
         }
       }
     }
