@@ -18,6 +18,7 @@ const Catalogo = require('./Catalogo');
 const Escala = require('./Escala');
 const EventoProduto = require('./EventoProduto');
 const OrcamentoProduto = require('./OrcamentoProduto');
+const Convite = require('./Convite');
 
 // ── Empresa (tenant) 1:N todas as entidades de negócio ───────
 // Toda linha do sistema pertence a um buffet contratante. O filtro por
@@ -25,7 +26,7 @@ const OrcamentoProduto = require('./OrcamentoProduto');
 [
   Usuario, Cliente, Local, Funcao, CategoriaFornecedor, CategoriaProduto,
   Funcionario, Fornecedor, Produto, Orcamento, Evento, Documento, Catalogo,
-  Escala, EventoProduto, OrcamentoProduto,
+  Escala, EventoProduto, OrcamentoProduto, Convite,
 ].forEach((Model) => {
   Empresa.hasMany(Model, { foreignKey: 'empresaId' });
   Model.belongsTo(Empresa, { foreignKey: 'empresaId', as: 'empresa' });
@@ -96,6 +97,10 @@ Escala.belongsTo(Funcao, { foreignKey: 'funcaoId', as: 'funcao' });
 Evento.hasMany(Escala, { foreignKey: 'eventoId', as: 'escala' });
 Funcionario.hasMany(Escala, { foreignKey: 'funcionarioId', as: 'escala' });
 
+// ── Evento 1:N Convite (portaria) ─────────────────────────────
+Evento.hasMany(Convite, { foreignKey: 'eventoId', as: 'convites' });
+Convite.belongsTo(Evento, { foreignKey: 'eventoId', as: 'evento' });
+
 // ── Evento N:M Produto (via EventoProduto) ────────────────────
 Evento.belongsToMany(Produto, {
   through: EventoProduto,
@@ -152,4 +157,5 @@ module.exports = {
   Escala,
   EventoProduto,
   OrcamentoProduto,
+  Convite,
 };

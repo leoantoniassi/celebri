@@ -52,6 +52,14 @@ export default function EventosPage() {
   const [errosEscala, setErrosEscala] = useState([]);
   const [funcoesLista, setFuncoesLista] = useState([]);
   const [toast, setToast] = useState(null);
+
+  // ─── Convidados (portaria) ─────────────────────────────────────
+  const [showConvidados, setShowConvidados] = useState(false);
+  const [convites, setConvites] = useState([]);
+  const [resumoPortaria, setResumoPortaria] = useState(null);
+  const [loadingConvites, setLoadingConvites] = useState(false);
+  const [novoConvite, setNovoConvite] = useState({ nome: "", telefone: "", qtdPessoas: 1 });
+  const [salvandoConvite, setSalvandoConvite] = useState(false);
   const { executeDelete } = useDeleteWithConfirm();
 
   const fetchData = async () => {
@@ -191,6 +199,75 @@ export default function EventosPage() {
       setEscalaAtual([]);
     } finally {
       setLoadingEscala(false);
+    }
+  };
+
+  // ─── Convidados Handlers ───────────────────────────────────────
+
+  const carregarConvites = async (evt) => {
+    setLoadingConvites(true);
+    try {
+      const { data: res } = await api.get(`/eventos/${evt.id}/convites`);
+      setConvites(Array.isArray(res.data) ? res.data : []);
+      setResumoPortaria(res.resumo || null);
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao carregar convidados.' });
+    } finally {
+      setLoadingConvites(false);
+    }
+  };
+
+  const handleAbrirConvidados = (evt) => {
+    setConvites([]);
+    setResumoPortaria(null);
+    setNovoConvite({ nome: "", telefone: "", qtdPessoas: 1 });
+    setShowConvidados(true);
+    carregarConvites(evt);
+  };
+
+  const handleUsarConvites = async (usaConvites) => {
+    try {
+      const { data: res } = await api.patch(`/eventos/${selectedEvento.id}/portaria`, { usaConvites });
+      setResumoPortaria(res.resumo);
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao salvar.' });
+    }
+  };
+
+  const handleCriarConvite = async (e) => {
+    e.preventDefault();
+    setSalvandoConvite(true);
+    try {
+      await api.post(`/eventos/${selectedEvento.id}/convites`, {
+        nome: novoConvite.nome,
+        telefone: novoConvite.telefone || null,
+        qtdPessoas: Number(novoConvite.qtdPessoas),
+      });
+      setNovoConvite({ nome: "", telefone: "", qtdPessoas: 1 });
+      await carregarConvites(selectedEvento);
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao criar convite.' });
+    } finally {
+      setSalvandoConvite(false);
+    }
+  };
+
+  const handleRemoverConvite = async (convite) => {
+    if (!(await confirm(`Remover o convite de "${convite.nome}"? O QR code deixa de funcionar.`))) return;
+    try {
+      await api.delete(`/convites/${convite.id}`);
+      await carregarConvites(selectedEvento);
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao remover convite.' });
+    }
+  };
+
+  const handleWhatsAppConvite = async (convite) => {
+    try {
+      const { data: res } = await api.get(`/convites/${convite.id}/whatsapp`);
+      window.open(res.data.link, '_blank', 'noopener');
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao gerar link do WhatsApp.' });
     }
   };
 
@@ -606,6 +683,13 @@ export default function EventosPage() {
                   <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">person_add</span>
                   Criar Escala
                 </button>
+                <button
+                  onClick={() => handleAbrirConvidados(selectedEvento)}
+                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-3.5 bg-surface border-2 border-secondary text-secondary rounded-2xl font-bold text-sm hover:bg-secondary hover:text-on-secondary transition-all shadow-sm group"
+                >
+                  <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">qr_code_2</span>
+                  Convidados e Portaria
+                </button>
               </div>
             </>
           ) : (
@@ -616,6 +700,133 @@ export default function EventosPage() {
           )}
         </div>
       </div>
+
+      {/* ─── Modal: Convidados e Portaria ─────────────────────────── */}
+      {showConvidados && (
+        <div
+          className="fixed inset-0 bg-on-surface/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+          onClick={() => setShowConvidados(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Convidados e portaria"
+            className="bg-surface rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-outline-variant/20">
+              <div>
+                <h3 className="text-xl font-headline font-extrabold text-on-surface">Convidados e Portaria</h3>
+                <p className="text-sm text-on-surface-variant mt-0.5">{selectedEvento?.nome}</p>
+              </div>
+              <button onClick={() => setShowConvidados(false)} className="p-2 hover:bg-surface-container rounded-full transition-colors" aria-label="Fechar">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {resumoPortaria && (
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-2xl bg-surface-container-low">
+                    <p className="text-2xl font-black text-on-surface">{resumoPortaria.totalPresentes}</p>
+                    <p className="text-xs text-on-surface-variant">presentes agora</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-surface-container-low">
+                    <p className="text-2xl font-black text-on-surface">{resumoPortaria.pessoasConvidadas}</p>
+                    <p className="text-xs text-on-surface-variant">pessoas em {resumoPortaria.convites} convite(s)</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-surface-container-low">
+                    <p className="text-2xl font-black text-on-surface">{resumoPortaria.avulsos}</p>
+                    <p className="text-xs text-on-surface-variant">entradas sem convite</p>
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 cursor-pointer">
+                <span>
+                  <span className="block font-bold text-on-surface text-sm">Usar lista de convidados com QR code</span>
+                  <span className="block text-xs text-on-surface-variant">
+                    Desligado, a portaria só conta quem entra. Ligado, cada convite (1 pessoa ou uma família) tem um QR.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-secondary shrink-0"
+                  checked={Boolean(resumoPortaria?.usaConvites)}
+                  onChange={e => handleUsarConvites(e.target.checked)}
+                  disabled={!resumoPortaria}
+                />
+              </label>
+
+              {resumoPortaria?.usaConvites && (
+                <>
+                  <form onSubmit={handleCriarConvite} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-12 sm:col-span-5 space-y-1">
+                      <label htmlFor="cnv-nome" className="text-xs font-bold text-on-surface-variant px-3">Nome ou família *</label>
+                      <input id="cnv-nome" required maxLength={150}
+                        className="w-full bg-surface-container-low border-none rounded-full py-2.5 px-4 focus:ring-2 focus:ring-secondary text-sm"
+                        value={novoConvite.nome} onChange={e => setNovoConvite({ ...novoConvite, nome: e.target.value })}
+                        placeholder="Ex: Família Souza" />
+                    </div>
+                    <div className="col-span-7 sm:col-span-4 space-y-1">
+                      <label htmlFor="cnv-tel" className="text-xs font-bold text-on-surface-variant px-3">WhatsApp</label>
+                      <input id="cnv-tel" maxLength={20}
+                        className="w-full bg-surface-container-low border-none rounded-full py-2.5 px-4 focus:ring-2 focus:ring-secondary text-sm"
+                        value={novoConvite.telefone} onChange={e => setNovoConvite({ ...novoConvite, telefone: e.target.value })}
+                        placeholder="(11) 99999-0000" />
+                    </div>
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <label htmlFor="cnv-qtd" className="text-xs font-bold text-on-surface-variant px-3">Pessoas</label>
+                      <input id="cnv-qtd" type="number" min={1} max={50} required
+                        className="w-full bg-surface-container-low border-none rounded-full py-2.5 px-4 focus:ring-2 focus:ring-secondary text-sm"
+                        value={novoConvite.qtdPessoas} onChange={e => setNovoConvite({ ...novoConvite, qtdPessoas: e.target.value })} />
+                    </div>
+                    <button type="submit" disabled={salvandoConvite} aria-label="Adicionar convite"
+                      className="col-span-2 sm:col-span-1 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center disabled:opacity-50">
+                      <span className="material-symbols-outlined">add</span>
+                    </button>
+                  </form>
+
+                  {loadingConvites ? (
+                    <p className="text-sm text-on-surface-variant text-center py-6">Carregando convidados...</p>
+                  ) : convites.length === 0 ? (
+                    <p className="text-sm text-on-surface-variant text-center py-6">Nenhum convite ainda.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {convites.map(c => (
+                        <li key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-surface-container-low">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-on-surface truncate">{c.nome}</p>
+                            <p className="text-xs text-on-surface-variant">
+                              {c.qtdPessoas} pessoa{c.qtdPessoas !== 1 ? 's' : ''} · entraram {c.qtdEntrou}
+                              {c.telefone ? ` · ${c.telefone}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <a href={c.link} target="_blank" rel="noopener noreferrer" title="Ver QR code"
+                              className="p-2 rounded-full text-on-surface-variant hover:bg-secondary/10 hover:text-secondary">
+                              <span className="material-symbols-outlined">qr_code_2</span>
+                            </a>
+                            {c.telefone && (
+                              <button onClick={() => handleWhatsAppConvite(c)} title="Enviar pelo WhatsApp"
+                                className="p-2 rounded-full text-on-surface-variant hover:bg-success-container">
+                                <WhatsAppIcon className="w-5 h-5" />
+                              </button>
+                            )}
+                            <button onClick={() => handleRemoverConvite(c)} title="Remover convite"
+                              className="p-2 rounded-full text-on-surface-variant hover:bg-error/10 hover:text-error">
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Modal: Ver Escala ─────────────────────────────────── */}
       {showEscalaModal && (

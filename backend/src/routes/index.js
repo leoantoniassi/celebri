@@ -20,5 +20,7 @@ router.use('/catalogos',    require('./catalogos.routes'));
 router.use('/escala',       require('./escala.routes'));
 router.use('/dashboard',    require('./dashboard.routes'));
 router.use('/usuarios',     require('./usuarios.routes'));
+router.use('/convites',     require('./convites.routes'));
+router.use('/portaria',     require('./portaria.routes'));
 
 module.exports = router;
