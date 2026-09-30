@@ -92,6 +92,7 @@ Funcionario.belongsToMany(Evento, {
 // Associações diretas na tabela Escala (para queries diretas)
 Escala.belongsTo(Evento, { foreignKey: 'eventoId', as: 'evento' });
 Escala.belongsTo(Funcionario, { foreignKey: 'funcionarioId', as: 'funcionario' });
+Escala.belongsTo(Funcao, { foreignKey: 'funcaoId', as: 'funcao' });
 Evento.hasMany(Escala, { foreignKey: 'eventoId', as: 'escala' });
 Funcionario.hasMany(Escala, { foreignKey: 'funcionarioId', as: 'escala' });
 

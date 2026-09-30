@@ -112,6 +112,11 @@ INSERT INTO funcoes (fnc_nome, fnc_descricao) VALUES
 ('Palhaço', 'Descrição para Palhaço'),
 ('Coordenador', 'Descrição para Coordenador');
 
+-- Módulo do app mobile (Celebri Staff) aberto por cada função.
+UPDATE funcoes SET fnc_modulo = 'garcom'   WHERE fnc_nome IN ('Garçom', 'Bartender');
+UPDATE funcoes SET fnc_modulo = 'cozinha'  WHERE fnc_nome = 'Cozinheiro';
+UPDATE funcoes SET fnc_modulo = 'portaria' WHERE fnc_nome IN ('Recepcionista', 'Segurança');
+
 -- CF. CATEGORIAS_FORNECEDOR
 INSERT INTO categorias_fornecedor (caf_nome, caf_descricao) VALUES
 ('Alimentos', 'Fornecedores de Alimentos'),

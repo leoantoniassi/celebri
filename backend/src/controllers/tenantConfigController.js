@@ -20,6 +20,7 @@ function serializar(empresa) {
       secundaria: empresa.corSecundaria,
       terciaria: empresa.corTerciaria,
     },
+    intervaloEscalaMin: empresa.intervaloEscalaMin,
   };
 }
 
@@ -68,8 +69,16 @@ async function atualizarConfig(req, res, next) {
       return fail(res, 'Empresa não encontrada. Por favor, saia e faça login novamente.', 404);
     }
 
-    const { nomeFantasia, logoUrl, cores } = req.body;
+    const { nomeFantasia, logoUrl, cores, intervaloEscalaMin } = req.body;
     const alteracoes = {};
+
+    if (intervaloEscalaMin !== undefined) {
+      const minutos = Number(intervaloEscalaMin);
+      if (!Number.isInteger(minutos) || minutos < 0 || minutos > 1440) {
+        return fail(res, 'O intervalo entre escalas deve ser de 0 a 1440 minutos (24h).');
+      }
+      alteracoes.intervaloEscalaMin = minutos;
+    }
 
     if (nomeFantasia !== undefined) {
       const valor = String(nomeFantasia).trim();

@@ -50,6 +50,7 @@ export default function EventosPage() {
   const [selecionados, setSelecionados] = useState([]);
   const [salvandoEscala, setSalvandoEscala] = useState(false);
   const [errosEscala, setErrosEscala] = useState([]);
+  const [funcoesLista, setFuncoesLista] = useState([]);
   const [toast, setToast] = useState(null);
   const { executeDelete } = useDeleteWithConfirm();
 
@@ -180,12 +181,26 @@ export default function EventosPage() {
     setLoadingEscala(true);
     setShowEscalaModal(true);
     try {
-      const { data: res } = await api.get(`/escala/evento/${evt.id}`);
+      const [{ data: res }, { data: funcoes }] = await Promise.all([
+        api.get(`/escala/evento/${evt.id}`),
+        api.get('/lookup/funcoes'),
+      ]);
       setEscalaAtual(Array.isArray(res.data) ? res.data : []);
+      setFuncoesLista(Array.isArray(funcoes.data) ? funcoes.data : []);
     } catch {
       setEscalaAtual([]);
     } finally {
       setLoadingEscala(false);
+    }
+  };
+
+  const handleTrocarFuncaoEscala = async (entry, funcaoId) => {
+    try {
+      await api.put(`/escala/${entry.id}`, { funcaoId: funcaoId || null });
+      const funcao = funcoesLista.find(f => f.id === funcaoId) || null;
+      setEscalaAtual(atual => atual.map(e => (e.id === entry.id ? { ...e, funcaoId: funcaoId || null, funcao } : e)));
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao trocar a função.' });
     }
   };
 
@@ -660,9 +675,29 @@ export default function EventosPage() {
                         </div>
                         <div>
                           <p className="font-bold text-on-surface text-sm">{entry.funcionario?.nome || "—"}</p>
-                          <p className="text-xs text-on-surface-variant">
-                            {entry.funcionario?.funcao?.nome || "Sem função"}
-                          </p>
+                          <select
+                            aria-label={`Função de ${entry.funcionario?.nome || 'funcionário'} neste evento`}
+                            className="mt-1 text-xs bg-surface border border-outline-variant/40 rounded-full py-1 pl-3 pr-8 focus:ring-2 focus:ring-tertiary"
+                            value={entry.funcaoId || ""}
+                            onChange={e => handleTrocarFuncaoEscala(entry, e.target.value)}
+                          >
+                            <option value="">Padrão: {entry.funcionario?.funcao?.nome || "sem função"}</option>
+                            {funcoesLista.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                          </select>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              entry.confirmacao === 'confirmado' ? 'bg-success-container text-on-success-container'
+                                : entry.confirmacao === 'recusado' ? 'bg-error-container text-on-error-container'
+                                : 'bg-surface-container-high text-on-surface-variant'
+                            }`}>
+                              {entry.confirmacao === 'confirmado' ? 'Confirmou' : entry.confirmacao === 'recusado' ? 'Recusou' : 'Aguardando resposta'}
+                            </span>
+                            {entry.checkinEm && (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-tertiary/10 text-tertiary">
+                                Chegou às {new Date(entry.checkinEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {user?.role !== "operador" && (

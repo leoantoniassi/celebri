@@ -78,6 +78,22 @@ const Usuario = sequelize.define('Usuario', {
     allowNull: true,
     field: 'usr_reset_expiracao',
   },
+  codigoHash: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    field: 'usr_codigo_hash',
+  },
+  codigoExpiracao: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'usr_codigo_expiracao',
+  },
+  codigoTentativas: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    field: 'usr_codigo_tentativas',
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

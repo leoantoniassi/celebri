@@ -32,6 +32,29 @@ const Escala = sequelize.define('Escala', {
     allowNull: true,
     field: 'esc_observacoes',
   },
+  // Função neste evento; nula = função do cadastro do funcionário.
+  funcaoId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'esc_fnc_id',
+  },
+  confirmacao: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'pendente',
+    field: 'esc_confirmacao',
+    validate: { isIn: [['pendente', 'confirmado', 'recusado']] },
+  },
+  confirmadoEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'esc_confirmado_em',
+  },
+  checkinEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'esc_checkin_em',
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

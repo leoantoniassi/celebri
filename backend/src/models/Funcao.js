@@ -28,6 +28,13 @@ const Funcao = sequelize.define('Funcao', {
     allowNull: true,
     field: 'fnc_descricao',
   },
+  // Tela do app mobile aberta por quem trabalha nesta função.
+  modulo: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'fnc_modulo',
+    validate: { isIn: [['cozinha', 'portaria', 'garcom']] },
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

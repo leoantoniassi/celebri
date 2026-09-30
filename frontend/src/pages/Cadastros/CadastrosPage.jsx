@@ -43,6 +43,15 @@ const TABLES = [
   },
 ];
 
+/* Tela do app Celebri Staff aberta por quem trabalha em cada função. */
+const MODULOS_APP = [
+  { valor: '', label: 'Nenhum (só vê a escala)' },
+  { valor: 'portaria', label: 'Portaria' },
+  { valor: 'garcom', label: 'Garçom' },
+  { valor: 'cozinha', label: 'Cozinha' },
+];
+const nomeModulo = (valor) => MODULOS_APP.find(m => m.valor === (valor || ''))?.label;
+
 /* ─── Mapa de cores por tabela ──────────────────────────────── */
 const colorMap = {
   tertiary:  { bg: 'bg-tertiary',   text: 'text-on-tertiary',   light: 'bg-tertiary/10',   textDark: 'text-tertiary',   shadow: 'shadow-tertiary/20',   ring: 'ring-tertiary/30',   border: 'border-tertiary/20' },
@@ -116,6 +125,7 @@ export default function CadastrosPage() {
       } : {
         nome: form.nome,
         descricao: form.descricao,
+        ...(activeTab === 'funcoes' && { modulo: form.modulo || null }),
       };
 
       if (editing) {
@@ -164,6 +174,7 @@ export default function CadastrosPage() {
       setForm({
         nome: item.nome || '',
         descricao: item.descricao || '',
+        modulo: item.modulo || '',
         logradouro: '',
         numero: '',
         complemento: '',
@@ -373,6 +384,12 @@ export default function CadastrosPage() {
                       ) : (
                         <td className="px-6 py-5">
                           <p className="text-sm text-on-surface-variant">{item.descricao || '—'}</p>
+                          {activeTab === 'funcoes' && item.modulo && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-tertiary/10 text-tertiary">
+                              <span className="material-symbols-outlined text-sm">smartphone</span>
+                              App: {nomeModulo(item.modulo)}
+                            </span>
+                          )}
                         </td>
                       )}
                       <td className="px-6 py-5 text-right">
@@ -599,6 +616,22 @@ export default function CadastrosPage() {
                         rows={4}
                       />
                     </div>
+                    {activeTab === 'funcoes' && (
+                      <div className="space-y-2">
+                        <label htmlFor="modulo-app" className="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-4">Tela no app Celebri Staff</label>
+                        <select
+                          id="modulo-app"
+                          className="w-full bg-surface-container-low border-none rounded-full py-3.5 px-6 focus:ring-2 focus:ring-primary"
+                          value={form.modulo || ''}
+                          onChange={e => setForm({ ...form, modulo: e.target.value })}
+                        >
+                          {MODULOS_APP.map(m => <option key={m.valor} value={m.valor}>{m.label}</option>)}
+                        </select>
+                        <p className="text-xs text-on-surface-variant px-4">
+                          Quem trabalhar nesta função vê essa tela no app durante o evento.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </form>

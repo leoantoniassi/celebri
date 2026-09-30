@@ -2,11 +2,42 @@
 // Controller: Funcionários
 // ============================================================
 const { Op } = require('sequelize');
-const { Funcionario, Funcao, Escala, Evento } = require('../models');
+const { Funcionario, Funcao, Escala, Evento, Usuario } = require('../models');
 const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { warning } = require('../utils/response');
 const { isValidUUID } = require('../utils/validators');
 const { saudacaoWhatsapp } = require('../utils/brand');
+
+// Funcionário com e-mail ganha uma conta pendente para o app mobile. No
+// primeiro acesso ele recebe um código nesse e-mail e cria a própria senha.
+async function garantirContaApp(funcionario) {
+  if (!funcionario.email) return;
+
+  const vinculada = await Usuario.findOne({ where: { funcionarioId: funcionario.id } });
+  if (vinculada) {
+    // Antes de ativar, a conta acompanha o e-mail do cadastro. Depois de
+    // ativa, o e-mail de login é da pessoa e não muda por aqui.
+    if (!vinculada.senha && vinculada.email !== funcionario.email) {
+      await vinculada.update({ email: funcionario.email });
+    }
+    return;
+  }
+
+  const mesmoEmail = await Usuario.findOne({ where: { email: funcionario.email } });
+  if (mesmoEmail) {
+    if (!mesmoEmail.funcionarioId) await mesmoEmail.update({ funcionarioId: funcionario.id });
+    return;
+  }
+
+  await Usuario.create({
+    nome: funcionario.nome,
+    email: funcionario.email,
+    senha: null,
+    role: 'operador',
+    status: 'pendente',
+    funcionarioId: funcionario.id,
+  });
+}
 
 // GET /api/funcionarios
 async function listar(req, res, next) {
@@ -106,6 +137,7 @@ async function criar(req, res, next) {
     }
 
     const funcionario = await Funcionario.create({ nome, email: emailTratado, telefone, telefoneResidencial, funcaoId });
+    await garantirContaApp(funcionario);
     const funcionarioCompleto = await Funcionario.findOne({
       where: { id: funcionario.id },
       include: [{ model: Funcao, as: 'funcao', attributes: ['id', 'nome'] }],
@@ -157,6 +189,7 @@ async function atualizar(req, res, next) {
       funcaoId: funcaoId || funcionario.funcaoId,
       atualizadoEm: new Date(),
     });
+    await garantirContaApp(funcionario);
 
     return res.json({
       success: true,
