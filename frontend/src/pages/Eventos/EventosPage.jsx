@@ -5,6 +5,7 @@ import { useConfirm } from "../../contexts/ConfirmContext";
 import Toast from "../../components/Toast";
 import WhatsAppIcon from "../../components/WhatsAppIcon";
 import useDeleteWithConfirm from "../../hooks/useDeleteWithConfirm";
+import CardapioEventoModal from "../../components/CardapioEventoModal";
 
 export default function EventosPage() {
   const { user } = useAuth();
@@ -60,6 +61,7 @@ export default function EventosPage() {
   const [loadingConvites, setLoadingConvites] = useState(false);
   const [novoConvite, setNovoConvite] = useState({ nome: "", telefone: "", qtdPessoas: 1 });
   const [salvandoConvite, setSalvandoConvite] = useState(false);
+  const [showCardapio, setShowCardapio] = useState(false);
   const { executeDelete } = useDeleteWithConfirm();
 
   const fetchData = async () => {
@@ -685,10 +687,17 @@ export default function EventosPage() {
                 </button>
                 <button
                   onClick={() => handleAbrirConvidados(selectedEvento)}
-                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-3.5 bg-surface border-2 border-secondary text-secondary rounded-2xl font-bold text-sm hover:bg-secondary hover:text-on-secondary transition-all shadow-sm group"
+                  className="flex items-center justify-center gap-2 px-4 py-3.5 bg-surface border-2 border-secondary text-secondary rounded-2xl font-bold text-sm hover:bg-secondary hover:text-on-secondary transition-all shadow-sm group"
                 >
                   <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">qr_code_2</span>
-                  Convidados e Portaria
+                  Convidados
+                </button>
+                <button
+                  onClick={() => setShowCardapio(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-3.5 bg-surface border-2 border-primary text-on-surface rounded-2xl font-bold text-sm hover:bg-primary hover:text-on-primary transition-all shadow-sm group"
+                >
+                  <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">restaurant_menu</span>
+                  Cardápio
                 </button>
               </div>
             </>
@@ -700,6 +709,10 @@ export default function EventosPage() {
           )}
         </div>
       </div>
+
+      {showCardapio && selectedEvento && (
+        <CardapioEventoModal evento={selectedEvento} onClose={() => setShowCardapio(false)} />
+      )}
 
       {/* ─── Modal: Convidados e Portaria ─────────────────────────── */}
       {showConvidados && (

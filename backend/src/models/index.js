@@ -19,6 +19,10 @@ const Escala = require('./Escala');
 const EventoProduto = require('./EventoProduto');
 const OrcamentoProduto = require('./OrcamentoProduto');
 const Convite = require('./Convite');
+const Mesa = require('./Mesa');
+const ServicoEvento = require('./ServicoEvento');
+const Pedido = require('./Pedido');
+const PedidoItem = require('./PedidoItem');
 
 // ── Empresa (tenant) 1:N todas as entidades de negócio ───────
 // Toda linha do sistema pertence a um buffet contratante. O filtro por
@@ -26,7 +30,7 @@ const Convite = require('./Convite');
 [
   Usuario, Cliente, Local, Funcao, CategoriaFornecedor, CategoriaProduto,
   Funcionario, Fornecedor, Produto, Orcamento, Evento, Documento, Catalogo,
-  Escala, EventoProduto, OrcamentoProduto, Convite,
+  Escala, EventoProduto, OrcamentoProduto, Convite, Mesa, ServicoEvento, Pedido, PedidoItem,
 ].forEach((Model) => {
   Empresa.hasMany(Model, { foreignKey: 'empresaId' });
   Model.belongsTo(Empresa, { foreignKey: 'empresaId', as: 'empresa' });
@@ -101,6 +105,18 @@ Funcionario.hasMany(Escala, { foreignKey: 'funcionarioId', as: 'escala' });
 Evento.hasMany(Convite, { foreignKey: 'eventoId', as: 'convites' });
 Convite.belongsTo(Evento, { foreignKey: 'eventoId', as: 'evento' });
 
+// ── Garçom e cozinha ──────────────────────────────────────────
+Local.hasMany(Mesa, { foreignKey: 'localId', as: 'mesas' });
+Mesa.belongsTo(Local, { foreignKey: 'localId', as: 'local' });
+Evento.hasMany(ServicoEvento, { foreignKey: 'eventoId', as: 'servicos' });
+ServicoEvento.belongsTo(Evento, { foreignKey: 'eventoId', as: 'evento' });
+Evento.hasMany(Pedido, { foreignKey: 'eventoId', as: 'pedidos' });
+Pedido.belongsTo(Evento, { foreignKey: 'eventoId', as: 'evento' });
+Mesa.hasMany(Pedido, { foreignKey: 'mesaId', as: 'pedidos' });
+Pedido.belongsTo(Mesa, { foreignKey: 'mesaId', as: 'mesa' });
+Pedido.hasMany(PedidoItem, { foreignKey: 'pedidoId', as: 'itens' });
+PedidoItem.belongsTo(Pedido, { foreignKey: 'pedidoId', as: 'pedido' });
+
 // ── Evento N:M Produto (via EventoProduto) ────────────────────
 Evento.belongsToMany(Produto, {
   through: EventoProduto,
@@ -158,4 +174,8 @@ module.exports = {
   EventoProduto,
   OrcamentoProduto,
   Convite,
+  Mesa,
+  ServicoEvento,
+  Pedido,
+  PedidoItem,
 };

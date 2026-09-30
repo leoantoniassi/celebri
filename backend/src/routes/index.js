@@ -23,4 +23,9 @@ router.use('/usuarios',     require('./usuarios.routes'));
 router.use('/convites',     require('./convites.routes'));
 router.use('/portaria',     require('./portaria.routes'));
 
+const { operacaoRouter, mesasRouter, servicosRouter } = require('./operacao.routes');
+router.use('/operacao',     operacaoRouter);
+router.use('/mesas',        mesasRouter);
+router.use('/servicos',     servicosRouter);
+
 module.exports = router;

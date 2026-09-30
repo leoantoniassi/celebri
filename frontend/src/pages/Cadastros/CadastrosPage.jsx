@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import MesasLocalModal from '../../components/MesasLocalModal';
 
 /* ─── Configuração das tabelas básicas ──────────────────────── */
 const TABLES = [
@@ -81,6 +82,7 @@ export default function CadastrosPage() {
     capacidadeMaxima: '',
   });
   const [search, setSearch] = useState('');
+  const [localMesas, setLocalMesas] = useState(null);
 
   const activeTable = TABLES.find(t => t.key === activeTab);
   const colors = colorMap[activeTable.color];
@@ -394,6 +396,15 @@ export default function CadastrosPage() {
                       )}
                       <td className="px-6 py-5 text-right">
                         <div className="flex justify-end gap-1">
+                          {activeTab === 'locais' && (
+                            <button
+                              onClick={() => setLocalMesas(item)}
+                              className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-primary/10"
+                              title="Mesas do salão"
+                            >
+                              <span className="material-symbols-outlined">table_restaurant</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => handleEdit(item)}
                             className="p-2 text-on-surface-variant hover:text-tertiary transition-colors rounded-full hover:bg-tertiary/10"
@@ -425,6 +436,8 @@ export default function CadastrosPage() {
           </div>
         </div>
       </div>
+
+      {localMesas && <MesasLocalModal local={localMesas} onClose={() => setLocalMesas(null)} />}
 
       {/* ─── Slide-in Panel ──────────────────────────────────── */}
       {showPanel && (

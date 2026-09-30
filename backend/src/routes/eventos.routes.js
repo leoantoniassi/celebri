@@ -6,6 +6,7 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/roles');
 const controller = require('../controllers/eventoController');
 const convites = require('../controllers/conviteController');
+const servicos = require('../controllers/servicoEventoController');
 
 router.use(auth);
 
@@ -21,6 +22,10 @@ router.get('/:id/whatsapp', authorize('gerente', 'operador'), controller.whatsap
 router.get('/:eventoId/convites', authorize('gerente', 'operador'), convites.listar);
 router.post('/:eventoId/convites', authorize('gerente', 'operador'), convites.criar);
 router.patch('/:eventoId/portaria', authorize('gerente', 'operador'), convites.configurarPortaria);
+
+// Cozinha: o que será servido, quanto e quando
+router.get('/:eventoId/servicos', authorize('gerente', 'operador'), servicos.listar);
+router.post('/:eventoId/servicos', authorize('gerente', 'operador'), servicos.criar);
 
 
 module.exports = router;
