@@ -230,7 +230,11 @@ INSERT INTO funcionarios (fun_nome, fun_email, fun_telefone, fun_fnc_id) VALUES
 ('Renato Mendes', 'renatomendes@email.com', '(11) 70000-0017', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Maquiador')),
 ('Sabrina Freitas', 'sabrinafreitas@email.com', '(11) 70000-0018', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Mágico')),
 ('Thiago Viana', 'thiagoviana@email.com', '(11) 70000-0019', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Palhaço')),
-('Vanessa Rezende', 'vanessarezende@email.com', '(11) 70000-0020', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Coordenador'));
+('Vanessa Rezende', 'vanessarezende@email.com', '(11) 70000-0020', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Coordenador')),
+-- Contas de teste do app mobile (Celebri Staff), e-mails usados no TESTE_MANUAL.md
+('Porteiro Teste', 'porteiro@teste.com', '(11) 70000-0021', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Recepcionista')),
+('Garçom Teste', 'garcom@teste.com', '(11) 70000-0022', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Garçom')),
+('Cozinha Teste', 'cozinha@teste.com', '(11) 70000-0023', (SELECT fnc_id FROM funcoes WHERE fnc_nome = 'Cozinheiro'));
 
 -- 4. PRODUTOS
 INSERT INTO produtos (prd_nome, prd_cap_id, prd_quantidade, prd_estoque_minimo, prd_unidade_medida, prd_custo_unitario) VALUES
@@ -328,6 +332,22 @@ INSERT INTO documentos (doc_cli_id, doc_evt_id, doc_nome_arquivo, doc_caminho_ur
 -- (Celebri Staff) ter uma conta de teste pronta sem passo manual.
 UPDATE usuarios SET usr_fun_id = (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Alice Rodrigues')
 WHERE usr_email = 'operador@celebri.com';
+
+-- Contas de login para os 3 funcionários de teste do app mobile acima.
+-- Sem senha de propósito: o primeiro acesso usa o fluxo de código de
+-- 6 dígitos (TESTE_MANUAL.md, Sessão 2) — sem SMTP configurado, o código
+-- sai no log da API (`docker compose logs -f backend`).
+INSERT INTO usuarios (usr_nome, usr_email, usr_role) VALUES
+('Porteiro Teste', 'porteiro@teste.com', 'operador'),
+('Garçom Teste',   'garcom@teste.com',   'operador'),
+('Cozinha Teste',  'cozinha@teste.com',  'operador');
+
+UPDATE usuarios SET usr_fun_id = (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Porteiro Teste')
+WHERE usr_email = 'porteiro@teste.com';
+UPDATE usuarios SET usr_fun_id = (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Garçom Teste')
+WHERE usr_email = 'garcom@teste.com';
+UPDATE usuarios SET usr_fun_id = (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Cozinha Teste')
+WHERE usr_email = 'cozinha@teste.com';
 
 -- 8. ESCALA
 INSERT INTO escala (esc_evt_id, esc_fun_id, esc_observacoes) VALUES
