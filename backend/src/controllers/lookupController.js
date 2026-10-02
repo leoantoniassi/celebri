@@ -15,12 +15,23 @@ async function listarFuncoes(req, res, next) {
   }
 }
 
+const MODULOS_APP = ['cozinha', 'portaria', 'garcom'];
+
+/** Módulo do app: undefined = não informado, null = nenhum, false = inválido. */
+function lerModulo(valor) {
+  if (valor === undefined) return undefined;
+  if (valor === null || valor === '') return null;
+  return MODULOS_APP.includes(valor) ? valor : false;
+}
+
 // POST /api/lookup/funcoes
 async function criarFuncao(req, res, next) {
   try {
     const { nome, descricao } = req.body;
     if (!nome) return res.status(400).json({ success: false, message: 'Nome é obrigatório.' });
-    const funcao = await Funcao.create({ nome, descricao });
+    const modulo = lerModulo(req.body.modulo);
+    if (modulo === false) return res.status(400).json({ success: false, message: 'Módulo do app inválido.' });
+    const funcao = await Funcao.create({ nome, descricao, modulo: modulo ?? null });
     return res.status(201).json({ success: true, data: funcao });
   } catch (error) {
     return next(error);
@@ -34,7 +45,13 @@ async function atualizarFuncao(req, res, next) {
     if (!funcao) return res.status(404).json({ success: false, message: 'Função não encontrada.' });
     const { nome, descricao } = req.body;
     if (!nome) return res.status(400).json({ success: false, message: 'Nome é obrigatório.' });
-    await funcao.update({ nome, descricao: descricao !== undefined ? descricao : funcao.descricao });
+    const modulo = lerModulo(req.body.modulo);
+    if (modulo === false) return res.status(400).json({ success: false, message: 'Módulo do app inválido.' });
+    await funcao.update({
+      nome,
+      descricao: descricao !== undefined ? descricao : funcao.descricao,
+      modulo: modulo !== undefined ? modulo : funcao.modulo,
+    });
     return res.json({ success: true, data: funcao, message: 'Função atualizada com sucesso!' });
   } catch (error) {
     return next(error);

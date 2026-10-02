@@ -7,7 +7,8 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { Usuario, Empresa, Funcionario, Funcao } = require('../models');
 const { resolverTenant } = require('../utils/resolverTenant');
-const { enviarEmailRecuperacaoSenha } = require('../services/emailService');
+const emailService = require('../services/emailService');
+const { enviarEmailRecuperacaoSenha } = emailService;
 
 // POST /api/auth/login
 async function login(req, res, next) {
@@ -60,48 +61,195 @@ async function login(req, res, next) {
       });
     }
 
-    // Gera token
-    const token = jwt.sign(
-      {
-        id: usuario.id,
-        email: usuario.email,
-        role: usuario.role,
-        empresaId: usuario.empresaId,
-        funcionarioId: usuario.funcionarioId,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-    );
+    const sessao = await montarSessao(usuario, empresa);
+    return res.json({ success: true, message: 'Login realizado com sucesso!', ...sessao });
+  } catch (error) {
+    return next(error);
+  }
+}
 
-    // Se a conta estiver vinculada a um funcionário de campo (app mobile),
-    // traz os dados já resolvidos para evitar uma chamada extra do cliente.
-    const funcionario = usuario.funcionarioId
-      ? await Funcionario.findOne({
-          where: { id: usuario.funcionarioId },
-          include: [{ model: Funcao, as: 'funcao', attributes: ['id', 'nome'] }],
-          ignoraTenant: true,
-        })
-      : null;
+/** Token JWT + dados do usuário, no formato devolvido pelo login. */
+async function montarSessao(usuario, empresa) {
+  const token = jwt.sign(
+    {
+      id: usuario.id,
+      email: usuario.email,
+      role: usuario.role,
+      empresaId: usuario.empresaId,
+      funcionarioId: usuario.funcionarioId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+  );
 
-    return res.json({
-      success: true,
-      message: 'Login realizado com sucesso!',
-      data: {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        role: usuario.role,
-        empresaId: usuario.empresaId,
-        empresa: usuario.empresaId
-          ? { id: empresa.id, nomeFantasia: empresa.nomeFantasia, slug: empresa.slug }
-          : null,
-        funcionarioId: usuario.funcionarioId,
-        funcionario: funcionario
-          ? { id: funcionario.id, nome: funcionario.nome, funcao: funcionario.funcao?.nome || null }
-          : null,
-      },
-      token,
+  // Se a conta estiver vinculada a um funcionário de campo (app mobile),
+  // traz os dados já resolvidos para evitar uma chamada extra do cliente.
+  const funcionario = usuario.funcionarioId
+    ? await Funcionario.findOne({
+        where: { id: usuario.funcionarioId },
+        include: [{ model: Funcao, as: 'funcao', attributes: ['id', 'nome'] }],
+        ignoraTenant: true,
+      })
+    : null;
+
+  return {
+    data: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      role: usuario.role,
+      empresaId: usuario.empresaId,
+      empresa: usuario.empresaId
+        ? { id: empresa.id, nomeFantasia: empresa.nomeFantasia, slug: empresa.slug }
+        : null,
+      funcionarioId: usuario.funcionarioId,
+      funcionario: funcionario
+        ? { id: funcionario.id, nome: funcionario.nome, funcao: funcionario.funcao?.nome || null }
+        : null,
+    },
+    token,
+  };
+}
+
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CODIGO_VALIDADE_MS = 15 * 60 * 1000;
+const CODIGO_MAX_TENTATIVAS = 5;
+
+const hashCodigo = (codigo) => crypto.createHash('sha256').update(String(codigo)).digest('hex');
+
+// POST /api/auth/identificar (público)
+// Primeiro passo do app mobile: o funcionário informa só o e-mail e
+// descobre em quais buffets está cadastrado. Revela se o e-mail existe,
+// por isso a rota tem limite de requisições.
+async function identificar(req, res, next) {
+  try {
+    const email = String(req.body?.email || '').trim();
+    if (!EMAIL_VALIDO.test(email)) {
+      return res.status(400).json({ success: false, message: 'Informe um e-mail válido.' });
+    }
+
+    const usuarios = await Usuario.findAll({
+      where: { email, empresaId: { [Op.ne]: null } },
+      ignoraTenant: true,
     });
+    if (usuarios.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const empresas = await Empresa.findAll({
+      where: { id: usuarios.map((u) => u.empresaId), status: 'ativo' },
+      ignoraTenant: true,
+    });
+
+    const data = empresas.map((empresa) => {
+      const usuario = usuarios.find((u) => u.empresaId === empresa.id);
+      return {
+        slug: empresa.slug,
+        nomeFantasia: empresa.nomeFantasia,
+        logoUrl: empresa.logoUrl || null,
+        primeiroAcesso: !usuario.senha,
+      };
+    });
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/** Usuário ainda sem senha, no buffet da requisição. */
+async function buscarPendente(req, email) {
+  const { empresa } = await resolverTenant(req);
+  if (!empresa || empresa.status !== 'ativo') return {};
+  const usuario = await Usuario.findOne({
+    where: { email, empresaId: empresa.id, senha: null },
+    ignoraTenant: true,
+  });
+  return { empresa, usuario };
+}
+
+// POST /api/auth/primeiro-acesso/codigo (público)
+async function enviarCodigoPrimeiroAcesso(req, res, next) {
+  try {
+    const email = String(req.body?.email || '').trim();
+    if (!EMAIL_VALIDO.test(email)) {
+      return res.status(400).json({ success: false, message: 'Informe um e-mail válido.' });
+    }
+
+    const mensagem = 'Se o e-mail estiver cadastrado, você receberá um código de acesso.';
+    const { empresa, usuario } = await buscarPendente(req, email);
+    if (!usuario) {
+      return res.json({ success: true, message: mensagem });
+    }
+
+    const codigo = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    await usuario.update({
+      codigoHash: hashCodigo(codigo),
+      codigoExpiracao: new Date(Date.now() + CODIGO_VALIDADE_MS),
+      codigoTentativas: 0,
+    });
+
+    await emailService.enviarCodigoPrimeiroAcesso({
+      nome: usuario.nome,
+      email: usuario.email,
+      codigo,
+      empresaId: empresa.id,
+    });
+
+    return res.json({ success: true, message: mensagem });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// POST /api/auth/primeiro-acesso/confirmar (público)
+// Confere o código, grava a senha e já devolve a sessão, como o login.
+async function confirmarPrimeiroAcesso(req, res, next) {
+  try {
+    const email = String(req.body?.email || '').trim();
+    const codigo = String(req.body?.codigo || '').trim();
+    const senha = String(req.body?.senha || '').trim();
+
+    if (!EMAIL_VALIDO.test(email) || !/^\d{6}$/.test(codigo)) {
+      return res.status(400).json({ success: false, message: 'E-mail e código de 6 dígitos são obrigatórios.' });
+    }
+    if (senha.length < 6) {
+      return res.status(400).json({ success: false, message: 'A senha deve ter no mínimo 6 caracteres.' });
+    }
+
+    const invalido = { success: false, message: 'Código inválido ou expirado. Solicite um novo código.' };
+    const { empresa, usuario } = await buscarPendente(req, email);
+    if (
+      !usuario ||
+      !usuario.codigoHash ||
+      !usuario.codigoExpiracao ||
+      new Date(usuario.codigoExpiracao) <= new Date() ||
+      usuario.codigoTentativas >= CODIGO_MAX_TENTATIVAS
+    ) {
+      return res.status(400).json(invalido);
+    }
+
+    const confere = crypto.timingSafeEqual(
+      Buffer.from(hashCodigo(codigo), 'hex'),
+      Buffer.from(usuario.codigoHash, 'hex')
+    );
+    if (!confere) {
+      await usuario.update({ codigoTentativas: usuario.codigoTentativas + 1 });
+      return res.status(400).json(invalido);
+    }
+
+    await usuario.update({
+      senha: await bcrypt.hash(senha, 10),
+      status: 'ativo',
+      codigoHash: null,
+      codigoExpiracao: null,
+      codigoTentativas: 0,
+      conviteToken: null,
+      conviteExpiracao: null,
+    });
+
+    const sessao = await montarSessao(usuario, empresa);
+    return res.json({ success: true, message: 'Senha criada com sucesso!', ...sessao });
   } catch (error) {
     return next(error);
   }
@@ -242,4 +390,11 @@ async function redefinirSenha(req, res, next) {
   }
 }
 
-module.exports = { login, solicitarRecuperacaoSenha, redefinirSenha };
+module.exports = {
+  login,
+  solicitarRecuperacaoSenha,
+  redefinirSenha,
+  identificar,
+  enviarCodigoPrimeiroAcesso,
+  confirmarPrimeiroAcesso,
+};

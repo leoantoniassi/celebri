@@ -85,6 +85,13 @@ const Empresa = sequelize.define('Empresa', {
       isIn: [['ativo', 'suspenso', 'cancelado']],
     },
   },
+  // Folga mínima, em minutos, entre dois eventos do mesmo funcionário.
+  intervaloEscalaMin: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 120,
+    field: 'emp_intervalo_escala_min',
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

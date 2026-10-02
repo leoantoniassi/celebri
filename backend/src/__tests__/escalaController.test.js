@@ -26,9 +26,16 @@ jest.mock('../models', () => {
     },
     Evento: { findOne: jest.fn() },
     Funcionario: { findAll: jest.fn(), findOne: jest.fn() },
-    Funcao: {},
+    Funcao: { findOne: jest.fn() },
+    Empresa: { findOne: jest.fn() },
+    Local: {},
   };
 });
+
+const { Empresa } = require('../models');
+
+// Usuário da requisição; cada teste pode trocar (auth está mockado).
+let usuarioAtual;
 
 const mockEvento = {
   id: 'evt-1',
@@ -61,8 +68,11 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Empresa.findOne.mockResolvedValue(null);
+    usuarioAtual = undefined;
     app = express();
     app.use(express.json());
+    app.use((req, _res, next) => { req.user = usuarioAtual; next(); });
     app.use('/api/escala', require('../routes/escala.routes'));
     app.use((err, _req, res, _next) => {
       res.status(500).json({ success: false, message: err.message });
@@ -128,7 +138,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
       expect(res.status).toBe(409);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('gap mínimo de 2h');
+      expect(res.body.message).toContain('intervalo mínimo de 2h');
       expect(res.body.message).toContain('João Silva');
     });
 
@@ -218,7 +228,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
       expect(res.status).toBe(201);
       expect(res.body.data.criados).toBe(1);
       expect(res.body.data.erros).toHaveLength(1);
-      expect(res.body.data.erros[0]).toContain('gap mínimo de 2h');
+      expect(res.body.data.erros[0]).toContain('intervalo mínimo de 2h');
     });
 
     test('deve retornar 400 se funcionarioIds não for informado', async () => {
@@ -346,6 +356,147 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
       expect(res.status).toBe(404);
       expect(res.body.message).toContain('não encontrado');
+    });
+  });
+
+  describe('intervalo mínimo configurável', () => {
+    const escalaUmaHoraDepois = {
+      id: 'esc-outro',
+      funcionarioId: 'func-1',
+      eventoId: 'evt-2',
+      evento: {
+        id: 'evt-2',
+        nome: 'Outro Evento',
+        dataEvento: '2026-01-01T11:00:00.000Z',
+        horarioTermino: '2026-01-01T13:00:00.000Z',
+      },
+    };
+
+    test('com intervalo de 30min do buffet, 1h de folga não é conflito', async () => {
+      usuarioAtual = { empresaId: 'emp-1', role: 'gerente' };
+      Empresa.findOne.mockResolvedValue({ intervaloEscalaMin: 30 });
+      Evento.findOne.mockResolvedValue(mockEvento);
+      Funcionario.findOne.mockResolvedValue(mockFuncionario);
+      Escala.findAll.mockResolvedValue([escalaUmaHoraDepois]);
+      Escala.escalaPorFiltro.mockResolvedValue(null);
+      Escala.create.mockResolvedValue({ id: 'esc-1' });
+      Escala.escalaPorId.mockResolvedValue(mockEscalaCriada);
+
+      const res = await request(app).post('/api/escala').send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+
+      expect(res.status).toBe(201);
+    });
+
+    test('com intervalo de 3h do buffet, a mensagem mostra 3h', async () => {
+      usuarioAtual = { empresaId: 'emp-1', role: 'gerente' };
+      Empresa.findOne.mockResolvedValue({ intervaloEscalaMin: 180 });
+      Evento.findOne.mockResolvedValue(mockEvento);
+      Funcionario.findOne.mockResolvedValue(mockFuncionario);
+      Escala.findAll.mockResolvedValue([escalaUmaHoraDepois]);
+
+      const res = await request(app).post('/api/escala').send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain('intervalo mínimo de 3h');
+    });
+  });
+
+  describe('app mobile: confirmação e check-in', () => {
+    const agora = Date.now();
+    const escalaPropria = (evento, extra = {}) => ({
+      id: 'esc-1',
+      funcionarioId: 'func-1',
+      checkinEm: null,
+      confirmadoEm: null,
+      evento,
+      update: jest.fn(),
+      ...extra,
+    });
+    const eventoFuturo = {
+      dataEvento: new Date(agora + 2 * 60 * 60 * 1000),
+      horarioTermino: new Date(agora + 6 * 60 * 60 * 1000),
+    };
+
+    beforeEach(() => {
+      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: 'func-1' };
+    });
+
+    test('confirma presença na própria escala', async () => {
+      const escala = escalaPropria(eventoFuturo);
+      Escala.escalaPorId.mockResolvedValue(escala);
+
+      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+
+      expect(res.status).toBe(200);
+      expect(escala.update).toHaveBeenCalledWith(expect.objectContaining({ confirmacao: 'confirmado' }));
+      expect(Escala.escalaPorId).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'esc-1', funcionarioId: 'func-1' } })
+      );
+    });
+
+    test('resposta inválida devolve 400', async () => {
+      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'talvez' });
+      expect(res.status).toBe(400);
+    });
+
+    test('escala de outra pessoa devolve 404', async () => {
+      Escala.escalaPorId.mockResolvedValue(null);
+      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+      expect(res.status).toBe(404);
+    });
+
+    test('conta sem funcionário vinculado não confirma', async () => {
+      usuarioAtual = { empresaId: 'emp-1', role: 'gerente' };
+      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+      expect(res.status).toBe(404);
+    });
+
+    test('check-in dentro da janela (até 3h antes) confirma presença', async () => {
+      const escala = escalaPropria(eventoFuturo);
+      Escala.escalaPorId.mockResolvedValue(escala);
+
+      const res = await request(app).post('/api/escala/esc-1/checkin');
+
+      expect(res.status).toBe(200);
+      expect(escala.update).toHaveBeenCalledWith(
+        expect.objectContaining({ checkinEm: expect.any(Date), confirmacao: 'confirmado' })
+      );
+    });
+
+    test('check-in muito antes do evento é recusado', async () => {
+      Escala.escalaPorId.mockResolvedValue(escalaPropria({
+        dataEvento: new Date(agora + 5 * 60 * 60 * 1000),
+        horarioTermino: new Date(agora + 8 * 60 * 60 * 1000),
+      }));
+
+      const res = await request(app).post('/api/escala/esc-1/checkin');
+
+      expect(res.status).toBe(409);
+    });
+
+    test('check-in repetido é recusado', async () => {
+      Escala.escalaPorId.mockResolvedValue(escalaPropria(eventoFuturo, { checkinEm: new Date() }));
+      const res = await request(app).post('/api/escala/esc-1/checkin');
+      expect(res.status).toBe(409);
+    });
+  });
+
+  describe('listarMinhas (GET /api/escala/minhas)', () => {
+    test('usa a função da escala e, sem ela, a do cadastro', async () => {
+      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: 'func-1' };
+      const garcom = { id: 'f-g', nome: 'Garçom', modulo: 'garcom' };
+      const porteiro = { id: 'f-p', nome: 'Recepcionista', modulo: 'portaria' };
+      Escala.findAll.mockResolvedValue([
+        { toJSON: () => ({ id: 'e1', funcao: porteiro, funcionario: { id: 'func-1', funcao: garcom } }) },
+        { toJSON: () => ({ id: 'e2', funcao: null, funcionario: { id: 'func-1', funcao: garcom } }) },
+      ]);
+
+      const res = await request(app).get('/api/escala/minhas');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data[0].funcao.modulo).toBe('portaria');
+      expect(res.body.data[1].funcao.modulo).toBe('garcom');
+      expect(res.body.data[0].funcionario).toBeUndefined();
     });
   });
 });

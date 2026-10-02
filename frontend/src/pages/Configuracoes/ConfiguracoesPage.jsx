@@ -45,6 +45,32 @@ export default function ConfiguracoesPage() {
   const [form, setForm] = useState({ nomeFantasia: '', logoUrl: '', cores: PALETA_PADRAO });
   const [salvando, setSalvando] = useState(false);
   const [toast, setToast] = useState(null);
+  const [intervaloHoras, setIntervaloHoras] = useState('2');
+  const [salvandoIntervalo, setSalvandoIntervalo] = useState(false);
+
+  useEffect(() => {
+    if (config?.intervaloEscalaMin !== undefined) {
+      setIntervaloHoras(String(config.intervaloEscalaMin / 60));
+    }
+  }, [config]);
+
+  const salvarIntervalo = async () => {
+    const minutos = Math.round(Number(intervaloHoras.replace(',', '.')) * 60);
+    if (!Number.isFinite(minutos) || minutos < 0 || minutos > 1440) {
+      setToast({ type: 'error', message: 'Informe um intervalo entre 0 e 24 horas.' });
+      return;
+    }
+    setSalvandoIntervalo(true);
+    try {
+      const { data } = await api.put('/tenant/config', { intervaloEscalaMin: minutos });
+      atualizarConfig(data.data);
+      setToast({ type: 'success', message: 'Intervalo entre escalas atualizado!' });
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Não foi possível salvar.' });
+    } finally {
+      setSalvandoIntervalo(false);
+    }
+  };
 
   // Sincroniza o formulário quando a config do tenant chega ou muda.
   useEffect(() => {
@@ -189,6 +215,41 @@ export default function ConfiguracoesPage() {
               </button>
             </div>
           </section>
+
+          {ehGerente && (
+            <section className="bg-surface p-6 rounded-3xl editorial-shadow border border-outline-variant/10">
+              <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-2">Escalas</h3>
+              <p className="text-xs text-on-surface-variant mb-6">
+                Folga mínima entre dois eventos do mesmo funcionário. O sistema não deixa escalar alguém
+                em eventos mais próximos que isso.
+              </p>
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-on-surface-variant ml-4" htmlFor="intervaloEscala">
+                    Intervalo mínimo (horas)
+                  </label>
+                  <input
+                    id="intervaloEscala"
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={0.5}
+                    className="w-40 h-14 px-5 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-secondary transition-all"
+                    value={intervaloHoras}
+                    onChange={(e) => setIntervaloHoras(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={salvarIntervalo}
+                  disabled={salvandoIntervalo || Number(intervaloHoras) * 60 === config?.intervaloEscalaMin}
+                  className="h-14 px-8 brand-gradient text-on-primary font-headline font-bold rounded-full shadow-lg shadow-primary/20 disabled:opacity-50"
+                >
+                  {salvandoIntervalo ? 'Salvando...' : 'Salvar intervalo'}
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* Seção: Identidade Visual (Marca e Cores) — Exclusivo para Gerente */}
           {ehGerente ? (

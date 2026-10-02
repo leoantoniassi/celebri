@@ -60,6 +60,24 @@ describe('TenantConfigController - atualizarConfig', () => {
     Empresa.findOne.mockResolvedValue(mockEmpresa);
   });
 
+  test('Salva o intervalo mínimo entre escalas em minutos', async () => {
+    mockReq.body = { intervaloEscalaMin: 90 };
+
+    await atualizarConfig(mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+    expect(mockEmpresa.update).toHaveBeenCalledWith(expect.objectContaining({ intervaloEscalaMin: 90 }));
+  });
+
+  test.each([-1, 1441, 1.5, 'abc'])('Recusa intervalo entre escalas inválido (%p)', async (valor) => {
+    mockReq.body = { intervaloEscalaMin: valor };
+
+    await atualizarConfig(mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockEmpresa.update).not.toHaveBeenCalled();
+  });
+
   test('Permite salvar logoUrl longa (acima de 255 caracteres)', async () => {
     const urlLonga = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?' + 'a'.repeat(300);
     mockReq.body = { logoUrl: urlLonga };

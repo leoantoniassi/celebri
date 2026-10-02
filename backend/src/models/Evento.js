@@ -88,6 +88,19 @@ const Evento = sequelize.define('Evento', {
     allowNull: true,
     field: 'evt_observacoes',
   },
+  // Portaria: lista de convidados com QR (opcional) e entradas sem convite.
+  usaConvites: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'evt_usa_convites',
+  },
+  qtdAvulsos: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    field: 'evt_qtd_avulsos',
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

@@ -40,7 +40,17 @@ function escapar(texto) {
  * As cores neutras são fixas de propósito: clientes de e-mail não
  * suportam custom properties, e só o que é marca precisa variar.
  */
-function montarHtml({ marca, emoji, titulo, saudacao, corpo, textoBotao, link, rodape }) {
+function montarHtml({ marca, emoji, titulo, saudacao, corpo, textoBotao, link, codigo, rodape }) {
+  const destaque = codigo
+    ? `<div style="text-align: center; font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #1a1a1a;">${escapar(codigo)}</div>`
+    : `<div style="text-align: center;">
+          <a href="${link}"
+             style="display: inline-block; background: ${marca.corPrimaria}; color: ${marca.corTexto};
+                    font-weight: 700; font-size: 16px; padding: 14px 32px; border-radius: 999px;
+                    text-decoration: none;">
+            ${escapar(textoBotao)}
+          </a>
+        </div>`;
   return `
     <div style="font-family: Inter, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #f7f7f5; border-radius: 16px;">
       <div style="text-align: center; margin-bottom: 32px;">
@@ -53,14 +63,7 @@ function montarHtml({ marca, emoji, titulo, saudacao, corpo, textoBotao, link, r
 
       <div style="background: #ffffff; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e3dd;">
         <p style="color: #44443f; margin: 0 0 16px;">${corpo}</p>
-        <div style="text-align: center;">
-          <a href="${link}"
-             style="display: inline-block; background: ${marca.corPrimaria}; color: ${marca.corTexto};
-                    font-weight: 700; font-size: 16px; padding: 14px 32px; border-radius: 999px;
-                    text-decoration: none;">
-            ${escapar(textoBotao)}
-          </a>
-        </div>
+        ${destaque}
       </div>
 
       <p style="color: #8a8a82; font-size: 13px; text-align: center; margin-top: 24px;">${rodape}</p>
@@ -144,4 +147,46 @@ async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
   }
 }
 
-module.exports = { enviarConvite, enviarEmailRecuperacaoSenha };
+/**
+ * Envia o código de 6 dígitos do primeiro acesso pelo app mobile.
+ * @param {Object} params
+ * @param {string} params.nome
+ * @param {string} params.email
+ * @param {string} params.codigo
+ * @param {string} params.empresaId
+ */
+async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
+  // Sem SMTP no ambiente de desenvolvimento, o código vai para o log
+  // para o app ainda poder ser testado ponta a ponta.
+  if (!process.env.EMAIL_HOST && process.env.NODE_ENV !== 'production') {
+    console.log(`[Email] SMTP não configurado — código de primeiro acesso de ${email}: ${codigo}`);
+    return;
+  }
+
+  const marca = await obterMarca(empresaId);
+  const transporter = criarTransporter();
+
+  try {
+    console.log(`[Email] Iniciando envio de código de primeiro acesso para ${email}...`);
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: `🔑 Seu código de acesso - ${marca.nomeFantasia}`,
+      html: montarHtml({
+        marca,
+        emoji: '🔑',
+        titulo: 'Código de primeiro acesso',
+        saudacao: `Olá, <strong>${escapar(nome)}</strong>! Use o código abaixo no app para criar sua senha.`,
+        corpo: 'Digite este código no aplicativo. Ele é válido por <strong>15 minutos</strong>.',
+        codigo,
+        rodape: 'Se você não tentou acessar o aplicativo, pode ignorar este e-mail com segurança.',
+      }),
+    });
+    console.log(`[Email] Código enviado com sucesso! Message ID: ${info.messageId}`);
+  } catch (error) {
+    console.error(`[Email] Erro ao enviar código para ${email}:`, error);
+    throw error;
+  }
+}
+
+module.exports = { enviarConvite, enviarEmailRecuperacaoSenha, enviarCodigoPrimeiroAcesso };
