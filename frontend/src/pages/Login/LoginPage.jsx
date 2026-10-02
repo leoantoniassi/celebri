@@ -11,12 +11,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, sessaoExpirada, limparMensagemExpiracao } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    limparMensagemExpiracao();
     setLoading(true);
     try {
       await login(email, senha);
@@ -64,6 +65,17 @@ export default function LoginPage() {
             <h3 className="font-headline text-3xl font-bold text-on-surface mb-2">Bem-vindo de volta</h3>
             <p className="text-on-surface-variant">Acesse sua conta para gerenciar seus eventos</p>
           </div>
+
+          {/* Banner: Sessão Expirada */}
+          {sessaoExpirada && !error && (
+            <div className="mb-6 p-4 bg-warning/15 border border-warning/40 text-on-surface rounded-2xl text-sm font-medium flex items-start gap-3">
+              <span className="material-symbols-outlined text-warning text-lg shrink-0 mt-0.5">timer_off</span>
+              <div>
+                <p className="font-semibold text-warning">Sua sessão expirou</p>
+                <p className="text-on-surface-variant text-xs mt-0.5">Por segurança, você foi desconectado automaticamente. Faça login novamente para continuar.</p>
+              </div>
+            </div>
+          )}
 
           {/* Error */}
           {error && (
