@@ -372,6 +372,21 @@ INSERT INTO escala (esc_evt_id, esc_fun_id, esc_observacoes) VALUES
 ((SELECT evt_id FROM eventos WHERE evt_nome = 'Despedida de Solteiro(a)'), (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Thiago Viana'), 'Turno integral'),
 ((SELECT evt_id FROM eventos WHERE evt_nome = 'Festa de Fim de Ano'), (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Vanessa Rezende'), 'Turno integral');
 
+-- Cliente e evento "de hoje" (datas relativas a NOW(), recalculadas a cada
+-- seed) só para os 3 funcionários de teste do app mobile terem uma escala
+-- pronta ao logar — equivalente ao que o TESTE_MANUAL.md (Sessão 1,
+-- itens 5-6) pede para fazer manualmente no painel.
+INSERT INTO clientes (cli_nome, cli_email, cli_rgcpf, cli_telefone) VALUES
+('Cliente Teste App', 'clienteteste@email.com', '000.000.000-00', '(11) 90000-0000');
+
+INSERT INTO eventos (evt_cli_id, evt_loc_id, evt_nome, evt_data_evento, evt_horario_termino, evt_status, evt_qtd_pessoas, evt_qtd_adultos, evt_qtd_criancas, evt_qtd_bebes, evt_observacoes) VALUES
+((SELECT cli_id FROM clientes WHERE cli_nome = 'Cliente Teste App'), (SELECT loc_id FROM locais WHERE loc_nome = 'Salão 1'), 'Evento Teste App Mobile', NOW() - INTERVAL '1 hour', NOW() + INTERVAL '4 hours', 'pendente', 50, 30, 20, 0, 'Evento criado pelo seed para testar o app Celebri Staff (porteiro, garçom, cozinha) sem precisar cadastrar nada no painel.');
+
+INSERT INTO escala (esc_evt_id, esc_fun_id, esc_observacoes) VALUES
+((SELECT evt_id FROM eventos WHERE evt_nome = 'Evento Teste App Mobile'), (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Porteiro Teste'), 'Escala de teste do app'),
+((SELECT evt_id FROM eventos WHERE evt_nome = 'Evento Teste App Mobile'), (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Garçom Teste'), 'Escala de teste do app'),
+((SELECT evt_id FROM eventos WHERE evt_nome = 'Evento Teste App Mobile'), (SELECT fun_id FROM funcionarios WHERE fun_nome = 'Cozinha Teste'), 'Escala de teste do app');
+
 -- 9. EVENTO_PRODUTO
 INSERT INTO evento_produto (evp_evt_id, evp_prd_id, evp_quantidade) VALUES
 ((SELECT evt_id FROM eventos WHERE evt_nome = 'Aniversário da Ana'), (SELECT prd_id FROM produtos WHERE prd_nome = 'Salgadinhos Sortidos'), 46),
