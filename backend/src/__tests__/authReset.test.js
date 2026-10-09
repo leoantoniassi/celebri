@@ -140,7 +140,7 @@ describe('Recuperação e Redefinição de Senha', () => {
 
       const res = await request(app)
         .post('/api/auth/redefinir-senha')
-        .send({ token: tokenValido, senha: 'nova_senha_segura' });
+        .send({ token: tokenValido, senha: 'nova_senha_segura1' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -166,13 +166,13 @@ describe('Recuperação e Redefinição de Senha', () => {
       expect(res.body.message).toContain('Token inválido ou expirado');
     });
 
-    test('deve retornar 400 para senha menor que 6 caracteres', async () => {
+    test('deve retornar 400 para senha menor que 10 caracteres', async () => {
       const res = await request(app)
         .post('/api/auth/redefinir-senha')
         .send({ token: tokenValido, senha: '123' });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('mínimo 6 caracteres');
+      expect(res.body.message).toContain('mínimo 10 caracteres');
     });
 
     test('deve redefinir falhando se a senha for composta apenas de espaços', async () => {
@@ -181,7 +181,7 @@ describe('Recuperação e Redefinição de Senha', () => {
         .send({ token: tokenValido, senha: '      ' });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('mínimo 6 caracteres');
+      expect(res.body.message).toContain('mínimo 10 caracteres');
     });
 
     test('deve retornar 400 para token com formato inválido (não hex)', async () => {

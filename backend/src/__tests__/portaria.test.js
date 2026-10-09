@@ -207,7 +207,7 @@ describe('Portaria e convites', () => {
     test('escapa o nome do convidado no HTML', async () => {
       Convite.findOne.mockResolvedValue({
         token: TOKEN, empresaId: 'emp-1', nome: '<script>alert(1)</script>', qtdPessoas: 2,
-        evento: { nome: 'Festa', dataEvento: '2026-10-01T20:00:00.000Z' },
+        evento: { nome: 'Festa', dataEvento: new Date(Date.now() + 86400000), horarioTermino: new Date(Date.now() + 90000000) },
       });
 
       const res = await request(app).get(`/api/convites/publico/${TOKEN}`);
@@ -220,10 +220,52 @@ describe('Portaria e convites', () => {
     });
 
     test('QR em PNG', async () => {
-      Convite.findOne.mockResolvedValue({ token: TOKEN, evento: {} });
+      Convite.findOne.mockResolvedValue({ token: TOKEN, evento: { dataEvento: new Date(Date.now() + 86400000) } });
       const res = await request(app).get(`/api/convites/publico/${TOKEN}/qrcode.png`);
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toBe('image/png');
+    });
+
+    describe('expiração, revogação e cabeçalhos', () => {
+      const dia = 86400000;
+      const conviteComFim = (fim) => ({
+        token: TOKEN, empresaId: 'emp-1', nome: 'Ana', qtdPessoas: 1,
+        evento: { nome: 'Festa', dataEvento: new Date(fim - 3600000), horarioTermino: new Date(fim) },
+      });
+
+      test('evento terminado há mais de 1 dia: 404 na página e no QR', async () => {
+        Convite.findOne.mockResolvedValue(conviteComFim(Date.now() - 2 * dia));
+        const pagina = await request(app).get(`/api/convites/publico/${TOKEN}`);
+        const qr = await request(app).get(`/api/convites/publico/${TOKEN}/qrcode.png`);
+        expect(pagina.status).toBe(404);
+        expect(qr.status).toBe(404);
+        expect(pagina.text).toBe('Convite não encontrado.');
+      });
+
+      test('dentro da margem de 1 dia após o fim ainda vale', async () => {
+        Convite.findOne.mockResolvedValue(conviteComFim(Date.now() - 12 * 3600000));
+        const res = await request(app).get(`/api/convites/publico/${TOKEN}`);
+        expect(res.status).toBe(200);
+      });
+
+      test('convite removido (revogado) não é encontrado: mesmo 404', async () => {
+        Convite.findOne.mockResolvedValue(null);
+        const res = await request(app).get(`/api/convites/publico/${TOKEN}`);
+        expect(res.status).toBe(404);
+        expect(res.text).toBe('Convite não encontrado.');
+      });
+
+      test('rotas públicas enviam no-store e Referrer-Policy no-referrer', async () => {
+        Convite.findOne.mockResolvedValue(conviteComFim(Date.now() + dia));
+        const pagina = await request(app).get(`/api/convites/publico/${TOKEN}`);
+        const qr = await request(app).get(`/api/convites/publico/${TOKEN}/qrcode.png`);
+        const expirado = await request(app).get(`/api/convites/publico/${'b'.repeat(32)}`);
+        for (const r of [pagina, qr]) {
+          expect(r.headers['cache-control']).toBe('no-store');
+          expect(r.headers['referrer-policy']).toBe('no-referrer');
+        }
+        expect(expirado.headers['cache-control']).toBe('no-store');
+      });
     });
   });
 });

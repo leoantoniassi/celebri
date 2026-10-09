@@ -1,54 +1,85 @@
 // ============================================================
 // Middleware: Autenticação JWT
 // ============================================================
-const jwt = require('jsonwebtoken');
 const comEscopoDeTenant = require('./tenant');
+const { verificarToken } = require('../config/seguranca');
+const { Usuario, Funcionario } = require('../models');
+const { ehFuncionarioDeCampo } = require('./papelAdministrativo');
 
-function auth(req, res, next) {
+const naoAutenticado = (res, message) =>
+  res.status(401).json({ success: false, message });
+
+async function auth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return naoAutenticado(res, 'Token de autenticação não fornecido.');
+  }
+
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    return naoAutenticado(res, 'Formato de token inválido. Use: Bearer <token>');
+  }
+
+  let decoded;
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token de autenticação não fornecido.',
-      });
-    }
-
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-      return res.status(401).json({
-        success: false,
-        message: 'Formato de token inválido. Use: Bearer <token>',
-      });
-    }
-
-    const token = parts[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Injeta dados do usuário no request
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      empresaId: decoded.empresaId || null,
-      funcionarioId: decoded.funcionarioId || null,
-    };
-
-    // Abre o escopo de tenant para o resto da requisição
-    return comEscopoDeTenant(req, res, next);
+    decoded = verificarToken(parts[1]);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expirado. Faça login novamente.',
-      });
+      return naoAutenticado(res, 'Token expirado. Faça login novamente.');
     }
-    return res.status(401).json({
-      success: false,
-      message: 'Token inválido.',
-    });
+    return naoAutenticado(res, 'Token inválido.');
   }
+
+  let usuario;
+  try {
+    // Uma consulta leve por requisição: confirma que a conta ainda existe e
+    // que a versão do token não foi revogada (troca de senha, suspensão...).
+    // ignoraTenant: o escopo de tenant só abre depois deste ponto.
+    usuario = await Usuario.findOne({
+      where: { id: decoded.id },
+      attributes: ['id', 'empresaId', 'tokenVersion', 'role', 'funcionarioId'],
+      ignoraTenant: true,
+    });
+
+    if (
+      !usuario ||
+      (usuario.tokenVersion || 0) !== (decoded.tv || 0) ||
+      (usuario.empresaId || null) !== (decoded.empresaId || null)
+    ) {
+      return naoAutenticado(res, 'Sessão encerrada. Faça login novamente.');
+    }
+
+    // Funcionário desligado (soft delete) perde o acesso na hora: a conta de
+    // campo continuaria válida até o token expirar.
+    if (ehFuncionarioDeCampo(usuario)) {
+      const funcionario = await Funcionario.findOne({
+        where: { id: usuario.funcionarioId },
+        attributes: ['id'],
+        ignoraTenant: true,
+      });
+      if (!funcionario) {
+        return naoAutenticado(res, 'Sessão encerrada. Faça login novamente.');
+      }
+    }
+  } catch (error) {
+    return next(error);
+  }
+
+  // Injeta dados do usuário no request. Papel e vínculo com funcionário vêm do
+  // BANCO (não do token): ser "de campo" decide o que a conta pode ver, e uma
+  // mudança de vínculo não pode esperar o token antigo expirar.
+  const daConta = (campo) => (usuario[campo] !== undefined ? usuario[campo] : decoded[campo]);
+  req.user = {
+    id: decoded.id,
+    email: decoded.email,
+    role: daConta('role'),
+    empresaId: decoded.empresaId || null,
+    funcionarioId: daConta('funcionarioId') || null,
+  };
+
+  // Abre o escopo de tenant para o resto da requisição
+  return comEscopoDeTenant(req, res, next);
 }
 
 module.exports = auth;

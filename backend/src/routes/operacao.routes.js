@@ -5,6 +5,8 @@
 const express = require('express');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/roles');
+const { exigirPapelAdministrativo } = require('../middleware/papelAdministrativo');
+const { validarUuidNoRouter } = require('../middleware/validarUuid');
 const { exigirAcessoAoEvento } = require('../middleware/acessoEvento');
 const operacao = require('../controllers/operacaoController');
 const mesas = require('../controllers/mesaController');
@@ -22,13 +24,15 @@ operacaoRouter.patch('/eventos/:eventoId/servicos/:servicoId', exigirAcessoAoEve
 
 // /api/mesas — painel
 const mesasRouter = express.Router();
-mesasRouter.use(auth, authorize('gerente', 'operador'));
+mesasRouter.use(auth, exigirPapelAdministrativo, authorize('gerente', 'operador'));
+validarUuidNoRouter(mesasRouter, 'id');
 mesasRouter.put('/:id', mesas.atualizar);
 mesasRouter.delete('/:id', mesas.remover);
 
 // /api/servicos — painel
 const servicosRouter = express.Router();
-servicosRouter.use(auth, authorize('gerente', 'operador'));
+servicosRouter.use(auth, exigirPapelAdministrativo, authorize('gerente', 'operador'));
+validarUuidNoRouter(servicosRouter, 'id');
 servicosRouter.put('/:id', servicos.atualizar);
 servicosRouter.delete('/:id', servicos.remover);
 

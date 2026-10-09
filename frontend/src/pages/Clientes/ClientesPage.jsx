@@ -91,7 +91,7 @@ export default function ClientesPage() {
   const handleWhatsApp = async (id) => {
     try {
       const { data: res } = await api.get(`/clientes/${id}/whatsapp`);
-      window.open(res.data?.link || res.url, '_blank');
+      window.open(res.data?.link || res.url, '_blank', 'noopener,noreferrer');
     } catch {}
   };
 
@@ -127,7 +127,7 @@ export default function ClientesPage() {
     msg += '\n\nQualquer duvida, estamos a disposicao!';
 
     const link = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
-    window.open(link, '_blank');
+    window.open(link, '_blank', 'noopener,noreferrer');
     setShowCatModal(false);
   };
 

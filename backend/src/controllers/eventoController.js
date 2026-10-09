@@ -19,6 +19,8 @@ const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { fail, warning } = require('../utils/response');
 const { isValidUUID, gerarWarningPessoas } = require('../utils/validators');
 const { saudacaoWhatsapp } = require('../utils/brand');
+const { garantirExistenciaNoTenant, erroFiltroUuid } = require('../utils/tenantFk');
+const { ehFuncionarioDeCampo } = require('../middleware/papelAdministrativo');
 
 // ─── Funções auxiliares (DRY) ──────────────────────────────────
 
@@ -82,11 +84,20 @@ async function listar(req, res, next) {
     if (status !== undefined && typeof status !== 'string') {
       return res.status(400).json({ success: false, message: 'Status inválido.' });
     }
-    if (localId !== undefined && typeof localId !== 'string') {
-      return res.status(400).json({ success: false, message: 'Local inválido.' });
+    const erroLocal = erroFiltroUuid(localId, 'Local');
+    if (erroLocal) {
+      return res.status(400).json({ success: false, message: erroLocal });
     }
 
     const where = { deletadoEm: null };
+    if (ehFuncionarioDeCampo(req.user)) {
+      // Campo só lista os eventos em que está escalado (e não recusou).
+      const escalas = await Escala.findAll({
+        where: { funcionarioId: req.user.funcionarioId, confirmacao: { [Op.ne]: 'recusado' } },
+        attributes: ['eventoId'],
+      });
+      where.id = { [Op.in]: escalas.map((e) => e.eventoId) };
+    }
     if (status) {
       where.status = status;
     } else {
@@ -134,24 +145,33 @@ async function buscarPorId(req, res, next) {
     if (!isValidUUID(req.params.id)) {
       return res.status(400).json({ success: false, message: 'ID do evento inválido.' });
     }
+    // Funcionário de campo vê o que precisa para trabalhar: sem valores,
+    // orçamento, documentos do cliente nem contatos de clientes e colegas.
+    const campo = ehFuncionarioDeCampo(req.user);
     const evento = await Evento.findOne({
       where: { id: req.params.id },
+      ...(campo && { attributes: { exclude: ['valorOrcamento', 'orcamentoId'] } }),
       include: [
         {
           model: Cliente,
           as: "cliente",
-          attributes: ["id", "nome", "email", "telefone"],
+          attributes: campo ? ["id", "nome"] : ["id", "nome", "email", "telefone"],
         },
         {
           model: Local,
           as: "local",
         },
-        { model: Orcamento, as: "orcamento" },
+        ...(campo ? [] : [{ model: Orcamento, as: "orcamento" }]),
         {
           model: Escala,
           as: "escala",
           separate: true,
-          include: [{ model: Funcionario, as: "funcionario", include: [{ model: Funcao, as: 'funcao' }] }],
+          include: [{
+            model: Funcionario,
+            as: "funcionario",
+            ...(campo && { attributes: ["id", "nome", "funcaoId"] }),
+            include: [{ model: Funcao, as: 'funcao' }],
+          }],
         },
         {
           model: EventoProduto,
@@ -159,7 +179,7 @@ async function buscarPorId(req, res, next) {
           separate: true,
           include: [{ model: Produto, as: "produto", include: [{ model: CategoriaProduto, as: 'categoria' }] }],
         },
-        { model: Documento, as: "documentos" },
+        ...(campo ? [] : [{ model: Documento, as: "documentos" }]),
       ],
     });
 
@@ -239,21 +259,13 @@ async function criar(req, res, next) {
       }
     }
 
-    const cliente = await Cliente.findOne({ where: { id: clienteId } });
-    if (!cliente) {
-      return res.status(404).json({
-        success: false,
-        message: "Cliente não encontrado.",
-      });
-    }
+    await garantirExistenciaNoTenant(Cliente, clienteId, 'Cliente');
+    await garantirExistenciaNoTenant(Orcamento, orcamentoId, 'Orçamento');
 
     let warnings = [];
 
     if (localId) {
-      const localExiste = await Local.findOne({ where: { id: localId } });
-      if (!localExiste) {
-        return res.status(404).json({ success: false, message: "Local não encontrado." });
-      }
+      const localExiste = await garantirExistenciaNoTenant(Local, localId, 'Local');
       const warnCapacidade = gerarWarningCapacidade(localExiste, finalQtdPessoas);
       if (warnCapacidade) warnings.push(warnCapacidade);
     }
@@ -347,11 +359,11 @@ async function atualizar(req, res, next) {
     const somaConvidados = (novaQtdAdultos || 0) + (novaQtdCriancas || 0) + (novaQtdBebes || 0);
     const finalQtdPessoas = somaConvidados > 0 ? somaConvidados : (qtdPessoas !== undefined ? qtdPessoas : evento.qtdPessoas);
 
+    await garantirExistenciaNoTenant(Cliente, clienteId, 'Cliente');
+    await garantirExistenciaNoTenant(Orcamento, orcamentoId, 'Orçamento');
+
     if (localId !== undefined && localId !== null) {
-      const localExiste = await Local.findOne({ where: { id: localId } });
-      if (!localExiste) {
-        return res.status(404).json({ success: false, message: "Local não encontrado." });
-      }
+      const localExiste = await garantirExistenciaNoTenant(Local, localId, 'Local');
       const warnCapacidade = gerarWarningCapacidade(localExiste, finalQtdPessoas);
       if (warnCapacidade) warnings.push(warnCapacidade);
     } else if (evento.localId) {

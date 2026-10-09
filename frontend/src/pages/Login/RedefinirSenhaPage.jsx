@@ -20,7 +20,7 @@ export default function RedefinirSenhaPage() {
   const [sucesso, setSucesso] = useState(false);
 
   const senhasIguais = confirmarSenha.length === 0 || senha === confirmarSenha;
-  const senhaForte = senha.length >= 6;
+  const senhaForte = senha.length >= 10 && /\p{L}/u.test(senha) && /\d/.test(senha);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +32,7 @@ export default function RedefinirSenhaPage() {
     }
 
     if (!senhaForte) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+      setError('A senha deve ter no mínimo 10 caracteres, com letras e números.');
       return;
     }
 
@@ -159,11 +159,11 @@ export default function RedefinirSenhaPage() {
                     <input
                       id="nova-senha"
                       type={showSenha ? 'text' : 'password'}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 10 caracteres, com letras e números"
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={10}
                       className="w-full h-14 pl-12 pr-12 py-3 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
                     />
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-tertiary">
@@ -183,12 +183,12 @@ export default function RedefinirSenhaPage() {
                   {senha.length > 0 && (
                     <div className="flex items-center gap-2 ml-4">
                       <div className="flex gap-1">
-                        <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 6 ? 'bg-primary' : 'bg-surface-container-high'}`} />
+                        <div className={`h-1 w-8 rounded-full transition-colors ${senhaForte ? 'bg-primary' : 'bg-surface-container-high'}`} />
                         <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 8 ? 'bg-primary' : 'bg-surface-container-high'}`} />
                         <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 10 ? 'bg-primary' : 'bg-surface-container-high'}`} />
                       </div>
                       <span className="text-xs text-on-surface-variant">
-                        {senha.length < 6 ? 'Muito curta' : senha.length < 8 ? 'Razoável' : senha.length < 10 ? 'Boa' : 'Forte'}
+                        {senhaForte ? 'Forte' : senha.length < 10 ? 'Muito curta' : 'Use letras e números'}
                       </span>
                     </div>
                   )}

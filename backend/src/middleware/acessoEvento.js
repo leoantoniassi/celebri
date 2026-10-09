@@ -8,10 +8,11 @@
 const { Op } = require('sequelize');
 const { Evento, Escala } = require('../models');
 const { isValidUUID } = require('../utils/validators');
+const { ehFuncionarioDeCampo } = require('./papelAdministrativo');
 
 async function podeOperarEvento(user, eventoId) {
   if (!user) return false;
-  if (user.role === 'gerente' || !user.funcionarioId) return true;
+  if (!ehFuncionarioDeCampo(user)) return true;
 
   const escala = await Escala.findOne({
     where: {
@@ -43,4 +44,25 @@ async function exigirAcessoAoEvento(req, res, next) {
   }
 }
 
-module.exports = { podeOperarEvento, exigirAcessoAoEvento };
+/**
+ * Rotas do painel que o funcionário de campo só pode consultar para um evento
+ * em que está escalado (e não recusou). Quem não é de campo passa direto;
+ * `req.params[param]` guarda o id do evento.
+ */
+function exigirAdministrativoOuEscalado(param = 'id') {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado.' });
+      }
+      if (!ehFuncionarioDeCampo(req.user) || (await podeOperarEvento(req.user, req.params[param]))) {
+        return next();
+      }
+      return res.status(403).json({ success: false, message: 'Você não está escalado neste evento.' });
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+module.exports = { podeOperarEvento, exigirAcessoAoEvento, exigirAdministrativoOuEscalado };

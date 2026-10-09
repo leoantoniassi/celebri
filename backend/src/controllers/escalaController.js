@@ -3,6 +3,8 @@
 // ============================================================
 const { Op } = require('sequelize');
 const { Escala, Evento, Funcionario, Funcao, Empresa, Local } = require('../models');
+const { isValidUUID } = require('../utils/validators');
+const { garantirExistenciaNoTenant } = require('../utils/tenantFk');
 
 const INTERVALO_PADRAO_MIN = 120;
 const MAX_ALOCACAO_LOTE = 100; // Limite de funcionários por lote para evitar DoS
@@ -57,10 +59,6 @@ function buscarEscalasNoPeriodo(funcionarioId, eventoId, inicioA, fimA, gapMs) {
   });
 }
 
-async function funcaoValida(funcaoId) {
-  if (!funcaoId) return true;
-  return Boolean(await Funcao.findOne({ where: { id: funcaoId } }));
-}
 
 // POST /api/escala
 async function alocar(req, res, next) {
@@ -74,27 +72,10 @@ async function alocar(req, res, next) {
       });
     }
 
-    // Verifica se evento existe
-    const evento = await Evento.findOne({ where: { id: eventoId } });
-    if (!evento) {
-      return res.status(404).json({
-        success: false,
-        message: 'Evento não encontrado.',
-      });
-    }
-
-    // Verifica se funcionário existe
-    const funcionario = await Funcionario.findOne({ where: { id: funcionarioId } });
-    if (!funcionario) {
-      return res.status(404).json({
-        success: false,
-        message: 'Funcionário não encontrado.',
-      });
-    }
-
-    if (!(await funcaoValida(funcaoId))) {
-      return res.status(404).json({ success: false, message: 'Função não encontrada.' });
-    }
+    // Evento, funcionário e função precisam existir neste tenant
+    const evento = await garantirExistenciaNoTenant(Evento, eventoId, 'Evento');
+    const funcionario = await garantirExistenciaNoTenant(Funcionario, funcionarioId, 'Funcionário');
+    await garantirExistenciaNoTenant(Funcao, funcaoId, 'Função');
 
     // Verifica conflito de horário com o intervalo mínimo do buffet
     const gapMs = await intervaloMinimoMs(req);
@@ -159,9 +140,7 @@ async function atualizar(req, res, next) {
     const alteracoes = { atualizadoEm: new Date() };
 
     if (funcaoId !== undefined) {
-      if (!(await funcaoValida(funcaoId))) {
-        return res.status(404).json({ success: false, message: 'Função não encontrada.' });
-      }
+      await garantirExistenciaNoTenant(Funcao, funcaoId, 'Função');
       alteracoes.funcaoId = funcaoId || null;
     }
     if (observacoes !== undefined) alteracoes.observacoes = observacoes;
@@ -422,10 +401,7 @@ async function alocarLote(req, res, next) {
       });
     }
 
-    const evento = await Evento.findOne({ where: { id: eventoId } });
-    if (!evento) {
-      return res.status(404).json({ success: false, message: 'Evento não encontrado.' });
-    }
+    const evento = await garantirExistenciaNoTenant(Evento, eventoId, 'Evento');
 
     const gapMs = await intervaloMinimoMs(req);
     const inicioA = garantirNumeroValido(new Date(evento.dataEvento).getTime(), 'Data de início do evento');
@@ -435,6 +411,7 @@ async function alocarLote(req, res, next) {
     const criados = [];
 
     for (const funcionarioId of funcionarioIds) {
+      if (!isValidUUID(funcionarioId)) { erros.push('Funcionário inválido.'); continue; }
       const funcionario = await Funcionario.findOne({ where: { id: funcionarioId } });
       if (!funcionario) { erros.push(`Funcionário ${funcionarioId} não encontrado.`); continue; }
 

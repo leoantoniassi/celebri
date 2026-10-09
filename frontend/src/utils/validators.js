@@ -42,3 +42,15 @@ export const validarCpfCnpj = (val) => {
   }
   return false;
 };
+
+/** Aceita só URLs http(s) absolutas (bloqueia javascript:, data:, file: etc.). Vazio é válido (campo opcional). */
+export const urlHttpValida = (valor) => {
+  const texto = String(valor ?? '').trim();
+  if (!texto) return true;
+  try {
+    const url = new URL(texto);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !!url.hostname;
+  } catch {
+    return false;
+  }
+};

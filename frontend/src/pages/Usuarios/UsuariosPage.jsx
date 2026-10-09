@@ -371,7 +371,7 @@ export default function UsuariosPage() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-4">Senha {editing && '(Deixe em branco para não alterar)'}</label>
-                  <input type="password" placeholder={editing ? '••••••••' : ''} className="w-full bg-surface-container-low border-none rounded-full py-3.5 px-6 focus:ring-2 focus:ring-primary" value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} required={!editing} minLength={6} />
+                  <input type="password" placeholder={editing ? '••••••••' : ''} className="w-full bg-surface-container-low border-none rounded-full py-3.5 px-6 focus:ring-2 focus:ring-primary" value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} required={!editing} minLength={10} />
                 </div>
 
                 <div className="space-y-2">

@@ -44,7 +44,7 @@ describe('Roles — Orçamentos (operador)', () => {
   let app;
 
   const mockCliente = {
-    id: 'cli-1',
+    id: '00000000-0000-4000-8000-0000000000c1',
     nome: 'Cliente Teste',
     email: 'cliente@teste.com',
     telefone: '11999999999',
@@ -52,7 +52,7 @@ describe('Roles — Orçamentos (operador)', () => {
 
   const makeOrcamento = (overrides = {}) => ({
     id: '550e8400-e29b-41d4-a716-446655440000',
-    clienteId: 'cli-1',
+    clienteId: '00000000-0000-4000-8000-0000000000c1',
     nome: 'Festa de aniversário',
     localId: null,
     valorTotal: 1000,
@@ -73,7 +73,7 @@ describe('Roles — Orçamentos (operador)', () => {
   });
 
   const orcamentoPayload = {
-    clienteId: 'cli-1',
+    clienteId: '00000000-0000-4000-8000-0000000000c1',
     nome: 'Festa de aniversário',
     dataEvento: '2026-12-31T10:00:00.000Z',
     horarioTermino: '2026-12-31T18:00:00.000Z',

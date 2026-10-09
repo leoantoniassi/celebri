@@ -38,29 +38,29 @@ const { Empresa } = require('../models');
 let usuarioAtual;
 
 const mockEvento = {
-  id: 'evt-1',
+  id: '00000003-0000-4000-8000-000000000003',
   nome: 'Evento Principal',
   dataEvento: '2026-01-01T08:00:00.000Z',
   horarioTermino: '2026-01-01T10:00:00.000Z',
 };
 
 const mockFuncionario = {
-  id: 'func-1',
+  id: '00000007-0000-4000-8000-000000000007',
   nome: 'João Silva',
 };
 
 const mockFuncionario2 = {
-  id: 'func-2',
+  id: '00000008-0000-4000-8000-000000000008',
   nome: 'Maria Souza',
 };
 
 const mockEscalaCriada = {
-  id: 'esc-1',
-  eventoId: 'evt-1',
-  funcionarioId: 'func-1',
+  id: '00000001-0000-4000-8000-000000000001',
+  eventoId: '00000003-0000-4000-8000-000000000003',
+  funcionarioId: '00000007-0000-4000-8000-000000000007',
   observacoes: null,
-  evento: { id: 'evt-1', nome: 'Evento Principal', dataEvento: '2026-01-01T08:00:00.000Z', horarioTermino: '2026-01-01T10:00:00.000Z' },
-  funcionario: { id: 'func-1', nome: 'João Silva', funcao: null },
+  evento: { id: '00000003-0000-4000-8000-000000000003', nome: 'Evento Principal', dataEvento: '2026-01-01T08:00:00.000Z', horarioTermino: '2026-01-01T10:00:00.000Z' },
+  funcionario: { id: '00000007-0000-4000-8000-000000000007', nome: 'João Silva', funcao: null },
 };
 
 describe('EscalaController — conflito com gap de 2h', () => {
@@ -69,7 +69,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Empresa.findOne.mockResolvedValue(null);
-    usuarioAtual = undefined;
+    usuarioAtual = { empresaId: 'emp-1', role: 'gerente' };
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => { req.user = usuarioAtual; next(); });
@@ -85,12 +85,12 @@ describe('EscalaController — conflito com gap de 2h', () => {
       Funcionario.findOne.mockResolvedValue(mockFuncionario);
       Escala.findAll.mockResolvedValue([]); // buscarEscalasMesmoDia → vazio
       Escala.escalaPorFiltro.mockResolvedValue(null); // não está alocado ainda
-      Escala.create.mockResolvedValue({ id: 'esc-1', eventoId: 'evt-1', funcionarioId: 'func-1' });
+      Escala.create.mockResolvedValue({ id: '00000001-0000-4000-8000-000000000001', eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
       Escala.escalaPorId.mockResolvedValue(mockEscalaCriada);
 
       const res = await request(app)
         .post('/api/escala')
-        .send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -102,12 +102,12 @@ describe('EscalaController — conflito com gap de 2h', () => {
       Funcionario.findOne.mockResolvedValue(mockFuncionario);
       Escala.findAll.mockResolvedValue([]);
       Escala.escalaPorFiltro.mockResolvedValue(null);
-      Escala.create.mockResolvedValue({ id: 'esc-1', eventoId: 'evt-1', funcionarioId: 'func-1' });
+      Escala.create.mockResolvedValue({ id: '00000001-0000-4000-8000-000000000001', eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
       Escala.escalaPorId.mockResolvedValue(mockEscalaCriada);
 
       const res = await request(app)
         .post('/api/escala')
-        .send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -121,10 +121,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
       const escalaConflito = {
         id: 'esc-outro',
-        funcionarioId: 'func-1',
-        eventoId: 'evt-2',
+        funcionarioId: '00000007-0000-4000-8000-000000000007',
+        eventoId: '00000004-0000-4000-8000-000000000004',
         evento: {
-          id: 'evt-2',
+          id: '00000004-0000-4000-8000-000000000004',
           nome: 'Outro Evento',
           dataEvento: '2026-01-01T11:00:00.000Z',
           horarioTermino: '2026-01-01T13:00:00.000Z',
@@ -134,7 +134,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
       const res = await request(app)
         .post('/api/escala')
-        .send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(409);
       expect(res.body.success).toBe(false);
@@ -145,7 +145,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
     test('deve retornar 400 se eventoId não for informado', async () => {
       const res = await request(app)
         .post('/api/escala')
-        .send({ funcionarioId: 'func-1' });
+        .send({ funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('obrigatórios');
@@ -154,7 +154,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
     test('deve retornar 400 se funcionarioId não for informado', async () => {
       const res = await request(app)
         .post('/api/escala')
-        .send({ eventoId: 'evt-1' });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003' });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('obrigatórios');
@@ -178,12 +178,12 @@ describe('EscalaController — conflito com gap de 2h', () => {
         .mockResolvedValueOnce(null); // func-2 não alocado
 
       Escala.create
-        .mockResolvedValueOnce({ id: 'esc-1' })
-        .mockResolvedValueOnce({ id: 'esc-2' });
+        .mockResolvedValueOnce({ id: '00000001-0000-4000-8000-000000000001' })
+        .mockResolvedValueOnce({ id: '00000002-0000-4000-8000-000000000002' });
 
       const res = await request(app)
         .post('/api/escala/lote')
-        .send({ eventoId: 'evt-1', funcionarioIds: ['func-1', 'func-2'] });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioIds: ['00000007-0000-4000-8000-000000000007', '00000008-0000-4000-8000-000000000008'] });
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -197,10 +197,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
       // func-2: OK
       const escalaConflito = {
         id: 'esc-outro',
-        funcionarioId: 'func-1',
-        eventoId: 'evt-2',
+        funcionarioId: '00000007-0000-4000-8000-000000000007',
+        eventoId: '00000004-0000-4000-8000-000000000004',
         evento: {
-          id: 'evt-2',
+          id: '00000004-0000-4000-8000-000000000004',
           nome: 'Evento Conflitante',
           dataEvento: '2026-01-01T11:00:00.000Z',
           horarioTermino: '2026-01-01T13:00:00.000Z',
@@ -219,11 +219,11 @@ describe('EscalaController — conflito com gap de 2h', () => {
         .mockResolvedValueOnce(null); // func-2 não alocado (func-1 skipped por conflito)
 
       Escala.create
-        .mockResolvedValueOnce({ id: 'esc-2' }); // só func-2 é criado
+        .mockResolvedValueOnce({ id: '00000002-0000-4000-8000-000000000002' }); // só func-2 é criado
 
       const res = await request(app)
         .post('/api/escala/lote')
-        .send({ eventoId: 'evt-1', funcionarioIds: ['func-1', 'func-2'] });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioIds: ['00000007-0000-4000-8000-000000000007', '00000008-0000-4000-8000-000000000008'] });
 
       expect(res.status).toBe(201);
       expect(res.body.data.criados).toBe(1);
@@ -234,7 +234,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
     test('deve retornar 400 se funcionarioIds não for informado', async () => {
       const res = await request(app)
         .post('/api/escala/lote')
-        .send({ eventoId: 'evt-1' });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003' });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('obrigatórios');
@@ -243,7 +243,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
     test('deve retornar 400 se funcionarioIds for array vazio', async () => {
       const res = await request(app)
         .post('/api/escala/lote')
-        .send({ eventoId: 'evt-1', funcionarioIds: [] });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioIds: [] });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('obrigatórios');
@@ -254,7 +254,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
 
       const res = await request(app)
         .post('/api/escala/lote')
-        .send({ eventoId: 'evt-1', funcionarioIds: muitosIds });
+        .send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioIds: muitosIds });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('Número máximo');
@@ -272,12 +272,12 @@ describe('EscalaController — conflito com gap de 2h', () => {
         .mockResolvedValueOnce([]); // escalasOutrosEventos
 
       Funcionario.findAll.mockResolvedValue([
-        { id: 'func-1', nome: 'João Silva', funcao: { id: 'fn-1', nome: 'Garçom' } },
-        { id: 'func-2', nome: 'Maria Souza', funcao: { id: 'fn-2', nome: 'Cozinheiro' } },
+        { id: '00000007-0000-4000-8000-000000000007', nome: 'João Silva', funcao: { id: '00000005-0000-4000-8000-000000000005', nome: 'Garçom' } },
+        { id: '00000008-0000-4000-8000-000000000008', nome: 'Maria Souza', funcao: { id: '00000006-0000-4000-8000-000000000006', nome: 'Cozinheiro' } },
       ]);
 
       const res = await request(app)
-        .get('/api/escala/disponiveis/evt-1');
+        .get('/api/escala/disponiveis/00000003-0000-4000-8000-000000000003');
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -293,10 +293,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
         .mockResolvedValueOnce([]) // jaEscalados neste evento → vazio
         .mockResolvedValueOnce([   // escalasOutrosEventos
           {
-            funcionarioId: 'func-1',
-            eventoId: 'evt-2',
+            funcionarioId: '00000007-0000-4000-8000-000000000007',
+            eventoId: '00000004-0000-4000-8000-000000000004',
             evento: {
-              id: 'evt-2',
+              id: '00000004-0000-4000-8000-000000000004',
               nome: 'Evento Distante',
               dataEvento: '2026-01-01T14:00:00.000Z',
               horarioTermino: '2026-01-01T16:00:00.000Z',
@@ -307,11 +307,11 @@ describe('EscalaController — conflito com gap de 2h', () => {
       // Como gap >= 2h, func-1 NÃO está em idsComConflito
       // idsIndisponiveis = [] (vazio)
       Funcionario.findAll.mockResolvedValue([
-        { id: 'func-1', nome: 'João Silva', funcao: { id: 'fn-1', nome: 'Garçom' } },
+        { id: '00000007-0000-4000-8000-000000000007', nome: 'João Silva', funcao: { id: '00000005-0000-4000-8000-000000000005', nome: 'Garçom' } },
       ]);
 
       const res = await request(app)
-        .get('/api/escala/disponiveis/evt-1');
+        .get('/api/escala/disponiveis/00000003-0000-4000-8000-000000000003');
 
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
@@ -326,10 +326,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
         .mockResolvedValueOnce([]) // jaEscalados neste evento → vazio
         .mockResolvedValueOnce([   // escalasOutrosEventos
           {
-            funcionarioId: 'func-1',
-            eventoId: 'evt-2',
+            funcionarioId: '00000007-0000-4000-8000-000000000007',
+            eventoId: '00000004-0000-4000-8000-000000000004',
             evento: {
-              id: 'evt-2',
+              id: '00000004-0000-4000-8000-000000000004',
               nome: 'Evento Conflitante',
               dataEvento: '2026-01-01T11:00:00.000Z',
               horarioTermino: '2026-01-01T13:00:00.000Z',
@@ -337,12 +337,12 @@ describe('EscalaController — conflito com gap de 2h', () => {
           },
         ]);
 
-      // func-1 tem conflito → está em idsComConflito → idsIndisponiveis = ['func-1']
+      // func-1 tem conflito → está em idsComConflito → idsIndisponiveis = ['00000007-0000-4000-8000-000000000007']
       // Funcionario.findAll deve ser chamado com where excluindo func-1
       Funcionario.findAll.mockResolvedValue([]); // nenhum disponível
 
       const res = await request(app)
-        .get('/api/escala/disponiveis/evt-1');
+        .get('/api/escala/disponiveis/00000003-0000-4000-8000-000000000003');
 
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(0);
@@ -352,7 +352,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
       Evento.findOne.mockResolvedValue(null);
 
       const res = await request(app)
-        .get('/api/escala/disponiveis/evt-inexistente');
+        .get('/api/escala/disponiveis/00000009-0000-4000-8000-000000000009');
 
       expect(res.status).toBe(404);
       expect(res.body.message).toContain('não encontrado');
@@ -362,10 +362,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
   describe('intervalo mínimo configurável', () => {
     const escalaUmaHoraDepois = {
       id: 'esc-outro',
-      funcionarioId: 'func-1',
-      eventoId: 'evt-2',
+      funcionarioId: '00000007-0000-4000-8000-000000000007',
+      eventoId: '00000004-0000-4000-8000-000000000004',
       evento: {
-        id: 'evt-2',
+        id: '00000004-0000-4000-8000-000000000004',
         nome: 'Outro Evento',
         dataEvento: '2026-01-01T11:00:00.000Z',
         horarioTermino: '2026-01-01T13:00:00.000Z',
@@ -379,10 +379,10 @@ describe('EscalaController — conflito com gap de 2h', () => {
       Funcionario.findOne.mockResolvedValue(mockFuncionario);
       Escala.findAll.mockResolvedValue([escalaUmaHoraDepois]);
       Escala.escalaPorFiltro.mockResolvedValue(null);
-      Escala.create.mockResolvedValue({ id: 'esc-1' });
+      Escala.create.mockResolvedValue({ id: '00000001-0000-4000-8000-000000000001' });
       Escala.escalaPorId.mockResolvedValue(mockEscalaCriada);
 
-      const res = await request(app).post('/api/escala').send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+      const res = await request(app).post('/api/escala').send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(201);
     });
@@ -394,7 +394,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
       Funcionario.findOne.mockResolvedValue(mockFuncionario);
       Escala.findAll.mockResolvedValue([escalaUmaHoraDepois]);
 
-      const res = await request(app).post('/api/escala').send({ eventoId: 'evt-1', funcionarioId: 'func-1' });
+      const res = await request(app).post('/api/escala').send({ eventoId: '00000003-0000-4000-8000-000000000003', funcionarioId: '00000007-0000-4000-8000-000000000007' });
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain('intervalo mínimo de 3h');
@@ -404,8 +404,8 @@ describe('EscalaController — conflito com gap de 2h', () => {
   describe('app mobile: confirmação e check-in', () => {
     const agora = Date.now();
     const escalaPropria = (evento, extra = {}) => ({
-      id: 'esc-1',
-      funcionarioId: 'func-1',
+      id: '00000001-0000-4000-8000-000000000001',
+      funcionarioId: '00000007-0000-4000-8000-000000000007',
       checkinEm: null,
       confirmadoEm: null,
       evento,
@@ -418,36 +418,36 @@ describe('EscalaController — conflito com gap de 2h', () => {
     };
 
     beforeEach(() => {
-      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: 'func-1' };
+      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: '00000007-0000-4000-8000-000000000007' };
     });
 
     test('confirma presença na própria escala', async () => {
       const escala = escalaPropria(eventoFuturo);
       Escala.escalaPorId.mockResolvedValue(escala);
 
-      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+      const res = await request(app).patch('/api/escala/00000001-0000-4000-8000-000000000001/confirmacao').send({ resposta: 'confirmado' });
 
       expect(res.status).toBe(200);
       expect(escala.update).toHaveBeenCalledWith(expect.objectContaining({ confirmacao: 'confirmado' }));
       expect(Escala.escalaPorId).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'esc-1', funcionarioId: 'func-1' } })
+        expect.objectContaining({ where: { id: '00000001-0000-4000-8000-000000000001', funcionarioId: '00000007-0000-4000-8000-000000000007' } })
       );
     });
 
     test('resposta inválida devolve 400', async () => {
-      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'talvez' });
+      const res = await request(app).patch('/api/escala/00000001-0000-4000-8000-000000000001/confirmacao').send({ resposta: 'talvez' });
       expect(res.status).toBe(400);
     });
 
     test('escala de outra pessoa devolve 404', async () => {
       Escala.escalaPorId.mockResolvedValue(null);
-      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+      const res = await request(app).patch('/api/escala/00000001-0000-4000-8000-000000000001/confirmacao').send({ resposta: 'confirmado' });
       expect(res.status).toBe(404);
     });
 
     test('conta sem funcionário vinculado não confirma', async () => {
       usuarioAtual = { empresaId: 'emp-1', role: 'gerente' };
-      const res = await request(app).patch('/api/escala/esc-1/confirmacao').send({ resposta: 'confirmado' });
+      const res = await request(app).patch('/api/escala/00000001-0000-4000-8000-000000000001/confirmacao').send({ resposta: 'confirmado' });
       expect(res.status).toBe(404);
     });
 
@@ -455,7 +455,7 @@ describe('EscalaController — conflito com gap de 2h', () => {
       const escala = escalaPropria(eventoFuturo);
       Escala.escalaPorId.mockResolvedValue(escala);
 
-      const res = await request(app).post('/api/escala/esc-1/checkin');
+      const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
 
       expect(res.status).toBe(200);
       expect(escala.update).toHaveBeenCalledWith(
@@ -469,26 +469,26 @@ describe('EscalaController — conflito com gap de 2h', () => {
         horarioTermino: new Date(agora + 8 * 60 * 60 * 1000),
       }));
 
-      const res = await request(app).post('/api/escala/esc-1/checkin');
+      const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
 
       expect(res.status).toBe(409);
     });
 
     test('check-in repetido é recusado', async () => {
       Escala.escalaPorId.mockResolvedValue(escalaPropria(eventoFuturo, { checkinEm: new Date() }));
-      const res = await request(app).post('/api/escala/esc-1/checkin');
+      const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
       expect(res.status).toBe(409);
     });
   });
 
   describe('listarMinhas (GET /api/escala/minhas)', () => {
     test('usa a função da escala e, sem ela, a do cadastro', async () => {
-      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: 'func-1' };
+      usuarioAtual = { empresaId: 'emp-1', role: 'operador', funcionarioId: '00000007-0000-4000-8000-000000000007' };
       const garcom = { id: 'f-g', nome: 'Garçom', modulo: 'garcom' };
       const porteiro = { id: 'f-p', nome: 'Recepcionista', modulo: 'portaria' };
       Escala.findAll.mockResolvedValue([
-        { toJSON: () => ({ id: 'e1', funcao: porteiro, funcionario: { id: 'func-1', funcao: garcom } }) },
-        { toJSON: () => ({ id: 'e2', funcao: null, funcionario: { id: 'func-1', funcao: garcom } }) },
+        { toJSON: () => ({ id: 'e1', funcao: porteiro, funcionario: { id: '00000007-0000-4000-8000-000000000007', funcao: garcom } }) },
+        { toJSON: () => ({ id: 'e2', funcao: null, funcionario: { id: '00000007-0000-4000-8000-000000000007', funcao: garcom } }) },
       ]);
 
       const res = await request(app).get('/api/escala/minhas');

@@ -63,6 +63,12 @@ const Convite = sequelize.define('Convite', {
     defaultValue: DataTypes.NOW,
     field: 'cnv_atualizado_em',
   },
+  // LGPD: preenchido quando os dados pessoais do titular foram anonimizados.
+  anonimizadoEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'cnv_anonimizado_em',
+  },
   deletadoEm: {
     type: DataTypes.DATE,
     allowNull: true,

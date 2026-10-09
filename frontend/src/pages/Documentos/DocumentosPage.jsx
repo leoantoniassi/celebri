@@ -93,7 +93,7 @@ export default function DocumentosPage() {
       try {
         const response = await api.get(`/documentos/${doc.id}/arquivo`, { responseType: 'blob' });
         const blobUrl = window.URL.createObjectURL(response.data);
-        window.open(blobUrl, '_blank');
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
       } catch {
         await confirm('Erro ao abrir o arquivo. Verifique se o caminho está acessível pelo servidor.', { title: 'Erro', showCancel: false });
       }
@@ -309,13 +309,13 @@ export default function DocumentosPage() {
                     id="caminhoUrl"
                     className="w-full bg-surface-container-low border-none rounded-full py-3.5 px-6 focus:bg-surface focus:ring-2 focus:ring-primary transition-all"
                     type="text"
-                    placeholder="C:\Contratos\joao.pdf  ou  https://drive.google.com/..."
+                    placeholder="contratos/joao.pdf  ou  https://drive.google.com/..."
                     value={form.caminhoUrl}
                     onChange={(e) => setForm({ ...form, caminhoUrl: e.target.value })}
                     required
                   />
                   <p className="text-[11px] text-on-surface-variant px-4">
-                    Caminho local ou link público (Google Drive, OneDrive, etc.)
+                    Caminho relativo à pasta de documentos da empresa ou link público (Google Drive, OneDrive, etc.)
                   </p>
                 </div>
 

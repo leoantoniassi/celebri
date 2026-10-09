@@ -52,6 +52,11 @@ function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Erro de negócio com mensagem segura para o cliente (ex.: FK inválida)
+  if (err.expose === true && err.statusCode >= 400 && err.statusCode < 500) {
+    return res.status(err.statusCode).json({ success: false, message: err.message });
+  }
+
   // Erro genérico
   const statusCode = err.statusCode || 500;
   return res.status(statusCode).json({

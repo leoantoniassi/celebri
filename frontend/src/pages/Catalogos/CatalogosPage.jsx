@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { urlHttpValida } from '../../utils/validators';
 
 export default function CatalogosPage() {
   const { user } = useAuth();
@@ -40,13 +41,17 @@ export default function CatalogosPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!urlHttpValida(form.urlExterna)) {
+      await confirm('O link do catálogo deve começar com http:// ou https://.', { title: 'Link inválido', showCancel: false });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         titulo: form.titulo,
         descricao: form.descricao,
         precoBase: form.precoBase,
-        urlExterna: form.urlExterna,
+        urlExterna: form.urlExterna.trim(),
       };
 
       if (editing) {
@@ -160,8 +165,8 @@ export default function CatalogosPage() {
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-tertiary">{formatPrice(c.precoBase)}</td>
                     <td className="px-6 py-4">
-                      {c.urlExterna ? (
-                        <a href={c.urlExterna} target="_blank" rel="noreferrer"
+                      {c.urlExterna && urlHttpValida(c.urlExterna) ? (
+                        <a href={c.urlExterna} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-primary underline flex items-center gap-1 hover:text-tertiary transition-colors">
                           <span className="material-symbols-outlined text-sm">link</span>
                           Ver link
@@ -247,15 +252,15 @@ export default function CatalogosPage() {
 
                 {/* URL / Caminho */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-4">Localização do Arquivo</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-4">Link do Catálogo</label>
                   <input
                     className="w-full bg-surface-container-low border-none rounded-full py-3.5 px-6 focus:bg-surface focus:ring-2 focus:ring-primary transition-all"
-                    type="text"
-                    placeholder="Ex: C:\Catálogos\buffet.pdf ou https://drive.google.com/..."
+                    type="text" inputMode="url"
+                    placeholder="https://drive.google.com/..."
                     value={form.urlExterna}
                     onChange={(e) => setForm({ ...form, urlExterna: e.target.value })}
                   />
-                  <p className="text-[11px] text-on-surface-variant px-4">Guarde aqui o caminho local ou link público do arquivo para referência.</p>
+                  <p className="text-[11px] text-on-surface-variant px-4">Informe o link público do catálogo (deve começar com http:// ou https://).</p>
                 </div>
 
               </form>

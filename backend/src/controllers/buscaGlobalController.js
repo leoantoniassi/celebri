@@ -3,6 +3,7 @@
 // ============================================================
 const { Op } = require('sequelize');
 const { Cliente, Evento, Orcamento, Funcionario, Fornecedor } = require('../models');
+const { contem } = require('../utils/escapeLike');
 
 // GET /api/busca?q=termo
 async function buscar(req, res, next) {
@@ -14,7 +15,7 @@ async function buscar(req, res, next) {
     }
 
     const termo = q.trim();
-    const like = { [Op.iLike]: `%${termo}%` };
+    const like = { [Op.iLike]: contem(termo) };
     const LIMIT = 5;
 
     const [clientes, eventos, orcamentos, funcionarios, fornecedores] = await Promise.all([
@@ -42,7 +43,7 @@ async function buscar(req, res, next) {
       Orcamento.findAll({
         where: {
           [Op.or]: [
-            { nome: { [Op.iLike]: `%${termo}%` } },
+            { nome: { [Op.iLike]: contem(termo) } },
             { status: like },
           ],
         },

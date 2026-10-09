@@ -6,7 +6,7 @@ const request = require('supertest');
 const express = require('express');
 
 // ── Mocks de autenticação ──────────────────────────────────
-jest.mock('../middleware/auth', () => (req, res, next) => next());
+jest.mock('../middleware/auth', () => (req, res, next) => { req.user = { id: 'u-1', role: 'gerente' }; next(); });
 jest.mock('../middleware/roles', () => () => (req, res, next) => next());
 
 // ── Mocks dos models ───────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import BrandLogo from '../../components/BrandLogo';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -18,9 +18,10 @@ export default function DefinirSenhaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sucesso, setSucesso] = useState(false);
+  const [aceiteTermos, setAceiteTermos] = useState(false);
 
   const senhasIguais = confirmarSenha.length === 0 || senha === confirmarSenha;
-  const senhaForte = senha.length >= 6;
+  const senhaForte = senha.length >= 10 && /\p{L}/u.test(senha) && /\d/.test(senha);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +33,7 @@ export default function DefinirSenhaPage() {
     }
 
     if (!senhaForte) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+      setError('A senha deve ter no mínimo 10 caracteres, com letras e números.');
       return;
     }
 
@@ -41,9 +42,14 @@ export default function DefinirSenhaPage() {
       return;
     }
 
+    if (!aceiteTermos) {
+      setError('Para ativar a conta, aceite os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.post('/usuarios/definir-senha', { token, senha });
+      await api.post('/usuarios/definir-senha', { token, senha, aceiteTermos: true });
       setSucesso(true);
       // Redireciona para login após 2.5s
       setTimeout(() => navigate('/login'), 2500);
@@ -159,11 +165,11 @@ export default function DefinirSenhaPage() {
                     <input
                       id="nova-senha"
                       type={showSenha ? 'text' : 'password'}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 10 caracteres, com letras e números"
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={10}
                       className="w-full h-14 pl-12 pr-12 py-3 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
                     />
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-tertiary">
@@ -183,12 +189,12 @@ export default function DefinirSenhaPage() {
                   {senha.length > 0 && (
                     <div className="flex items-center gap-2 ml-4">
                       <div className="flex gap-1">
-                        <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 6 ? 'bg-primary' : 'bg-surface-container-high'}`} />
+                        <div className={`h-1 w-8 rounded-full transition-colors ${senhaForte ? 'bg-primary' : 'bg-surface-container-high'}`} />
                         <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 8 ? 'bg-primary' : 'bg-surface-container-high'}`} />
                         <div className={`h-1 w-8 rounded-full transition-colors ${senha.length >= 10 ? 'bg-primary' : 'bg-surface-container-high'}`} />
                       </div>
                       <span className="text-xs text-on-surface-variant">
-                        {senha.length < 6 ? 'Muito curta' : senha.length < 8 ? 'Razoável' : senha.length < 10 ? 'Boa' : 'Forte'}
+                        {senhaForte ? 'Forte' : senha.length < 10 ? 'Muito curta' : 'Use letras e números'}
                       </span>
                     </div>
                   )}
@@ -246,11 +252,33 @@ export default function DefinirSenhaPage() {
                   )}
                 </div>
 
+                {/* Aceite LGPD */}
+                <div className="flex items-start gap-3 ml-4">
+                  <input
+                    id="aceite-termos"
+                    type="checkbox"
+                    checked={aceiteTermos}
+                    onChange={(e) => setAceiteTermos(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-outline text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="aceite-termos" className="text-sm text-on-surface-variant">
+                    Li e aceito os{' '}
+                    <Link to="/privacidade#termos" target="_blank" rel="noopener noreferrer" className="font-semibold text-secondary hover:text-primary underline">
+                      Termos de Uso
+                    </Link>{' '}
+                    e a{' '}
+                    <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-secondary hover:text-primary underline">
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </label>
+                </div>
+
                 {/* Botão Submit */}
                 <button
                   id="btn-ativar-conta"
                   type="submit"
-                  disabled={loading || !token || !senhasIguais || !senhaForte}
+                  disabled={loading || !token || !senhasIguais || !senhaForte || !aceiteTermos}
                   className="w-full h-14 brand-gradient text-on-primary font-headline font-bold text-lg rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                 >
                   {loading ? (

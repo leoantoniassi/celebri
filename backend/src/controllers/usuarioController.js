@@ -1,11 +1,16 @@
 // ============================================================
 // Controller: Usuários — CRUD + Convite + Ativação
 // ============================================================
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { Op } = require('sequelize');
-const { Usuario } = require('../models');
+const { Op, Transaction } = require('sequelize');
+const sequelize = require('../config/database');
+const { Usuario, Funcionario } = require('../models');
 const { enviarConvite } = require('../services/emailService');
+const { validarSenha } = require('../utils/validators');
+const { garantirExistenciaNoTenant } = require('../utils/tenantFk');
+const { gerarToken, hashToken } = require('../utils/tokens');
+const { revogarSessoes, VALIDADE, TERMOS_VERSAO } = require('../config/seguranca');
+const auditoria = require('../services/auditoriaService');
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -27,6 +32,48 @@ const normalizeRole = (role) => (role === 'gerente' ? 'gerente' : 'operador');
  * @returns {boolean}
  */
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email));
+
+/**
+ * O funcionário vinculado precisa existir NESTE tenant: o id vem do body e o
+ * login carrega o funcionário com ignoraTenant, então um id de outro buffet
+ * vazaria nome e função dele.
+ * @returns {Promise<string|null>} mensagem de erro, ou null se válido/ausente
+ */
+async function validarFuncionarioId(funcionarioId) {
+  try {
+    await garantirExistenciaNoTenant(Funcionario, funcionarioId, 'Funcionário');
+    return null;
+  } catch (error) {
+    if (error.expose) return error.message;
+    throw error;
+  }
+}
+
+/** Outros gerentes ativos do tenant além de `usuario`. */
+function contarOutrosGerentesAtivos(usuario, transaction) {
+  return Usuario.count({
+    where: { role: 'gerente', status: 'ativo', id: { [Op.ne]: usuario.id } },
+    transaction,
+  });
+}
+
+/**
+ * Executa `fn(transaction)` com as linhas de gerente do tenant travadas
+ * (SELECT ... FOR UPDATE). Sem a trava, dois gerentes se removendo/rebaixando
+ * ao mesmo tempo veriam "ainda há outro gerente" e deixariam a empresa sem nenhum.
+ * A contagem precisa ser feita DENTRO de `fn`, depois da trava.
+ */
+function comGerentesTravados(fn) {
+  return sequelize.transaction(async (transaction) => {
+    await Usuario.findAll({
+      where: { role: 'gerente' },
+      attributes: ['id'],
+      lock: Transaction.LOCK.UPDATE,
+      transaction,
+    });
+    return fn(transaction);
+  });
+}
 
 // ── GET /api/usuarios ────────────────────────────────────────
 
@@ -55,8 +102,23 @@ async function criar(req, res, next) {
       });
     }
 
+    if (typeof email !== 'string' || !isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Formato de e-mail inválido.' });
+    }
+
+    const senhaTrimmed = String(senha).trim();
+    const erroSenha = validarSenha(senhaTrimmed, email);
+    if (erroSenha) {
+      return res.status(400).json({ success: false, message: erroSenha });
+    }
+
+    const erroFuncionario = await validarFuncionarioId(funcionarioId);
+    if (erroFuncionario) {
+      return res.status(400).json({ success: false, message: erroFuncionario });
+    }
+
     const userRole = normalizeRole(role);
-    const hash = await bcrypt.hash(senha, 10);
+    const hash = await bcrypt.hash(senhaTrimmed, 10);
 
     const usuario = await Usuario.create({
       nome,
@@ -65,6 +127,11 @@ async function criar(req, res, next) {
       role: userRole,
       status: 'ativo',
       funcionarioId: funcionarioId || null,
+    });
+
+    await auditoria.registrar({
+      req, acao: 'usuario.criado', entidade: 'usuario', entidadeId: usuario.id,
+      detalhes: { papel: usuario.role, comFuncionario: Boolean(usuario.funcionarioId) },
     });
 
     return res.status(201).json({
@@ -96,19 +163,63 @@ async function atualizar(req, res, next) {
     }
 
     const { nome, email, role, senha } = req.body;
+    if (email && (typeof email !== 'string' || !isValidEmail(email))) {
+      return res.status(400).json({ success: false, message: 'Formato de e-mail inválido.' });
+    }
     let hash = usuario.senha;
     if (senha) {
-      hash = await bcrypt.hash(senha, 10);
+      const senhaTrimmed = String(senha).trim();
+      const erroSenha = validarSenha(senhaTrimmed, email || usuario.email);
+      if (erroSenha) {
+        return res.status(400).json({ success: false, message: erroSenha });
+      }
+      hash = await bcrypt.hash(senhaTrimmed, 10);
     }
 
     const userRole = normalizeRole(role);
+    const novoRole = role ? userRole : usuario.role;
+    const papelAnterior = usuario.role;
 
-    await usuario.update({
-      nome: nome || usuario.nome,
-      email: email || usuario.email,
-      role: role ? userRole : usuario.role,
-      senha: hash,
-    });
+    // Troca de senha ou de papel revoga as sessões abertas (o papel vai no JWT).
+    const revogar = Boolean(senha) || novoRole !== usuario.role;
+
+    const gravar = (transaction) => {
+      const dados = {
+        nome: nome || usuario.nome,
+        email: email || usuario.email,
+        role: novoRole,
+        senha: hash,
+        ...(revogar && revogarSessoes(usuario)),
+      };
+      return transaction ? usuario.update(dados, { transaction }) : usuario.update(dados);
+    };
+
+    // O tenant nunca pode ficar sem gerente ativo.
+    if (usuario.role === 'gerente' && novoRole !== 'gerente' && usuario.status === 'ativo') {
+      const ultimo = await comGerentesTravados(async (transaction) => {
+        if ((await contarOutrosGerentesAtivos(usuario, transaction)) === 0) return true;
+        await gravar(transaction);
+        return false;
+      });
+      if (ultimo) {
+        return res.status(409).json({
+          success: false,
+          message: 'Não é possível rebaixar o último gerente ativo da empresa.',
+        });
+      }
+    } else {
+      await gravar();
+    }
+
+    if (novoRole !== papelAnterior) {
+      await auditoria.registrar({
+        req, acao: 'usuario.papel.alterado', entidade: 'usuario', entidadeId: usuario.id,
+        detalhes: { papelAnterior, papelNovo: novoRole },
+      });
+    }
+    if (senha) {
+      await auditoria.registrar({ req, acao: 'usuario.senha.alterada', entidade: 'usuario', entidadeId: usuario.id, detalhes: { origem: 'gerente' } });
+    }
 
     return res.json({
       success: true,
@@ -132,7 +243,30 @@ async function remover(req, res, next) {
       return res.status(404).json({ success: false, message: 'Usuário não encontrado.' });
     }
 
-    await usuario.destroy();
+    if (usuario.id === req.user?.id) {
+      return res.status(409).json({ success: false, message: 'Você não pode remover a própria conta.' });
+    }
+
+    if (usuario.role === 'gerente' && usuario.status === 'ativo') {
+      const ultimo = await comGerentesTravados(async (transaction) => {
+        if ((await contarOutrosGerentesAtivos(usuario, transaction)) === 0) return true;
+        await usuario.destroy({ transaction });
+        return false;
+      });
+      if (ultimo) {
+        return res.status(409).json({
+          success: false,
+          message: 'Não é possível remover o último gerente ativo da empresa.',
+        });
+      }
+    } else {
+      await usuario.destroy();
+    }
+
+    await auditoria.registrar({
+      req, acao: 'usuario.removido', entidade: 'usuario', entidadeId: usuario.id,
+      detalhes: { papel: usuario.role },
+    });
 
     return res.json({
       success: true,
@@ -164,6 +298,11 @@ async function convidarUsuario(req, res, next) {
       });
     }
 
+    const erroFuncionario = await validarFuncionarioId(funcionarioId);
+    if (erroFuncionario) {
+      return res.status(400).json({ success: false, message: erroFuncionario });
+    }
+
     // [OWASP A07] Anti-enumeração: não revelar se e-mail já existe
     // Retornamos 201 sem enviar e-mail para não expor dados cadastrais
     const existente = await Usuario.findOne({ where: { email } });
@@ -174,20 +313,26 @@ async function convidarUsuario(req, res, next) {
       });
     }
 
-    // Gera token seguro e define expiração de 24h
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiracao = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Gera token seguro e define expiração de 24h. O e-mail leva o token
+    // cru; o banco guarda só o hash.
+    const token = gerarToken();
+    const expiracao = new Date(Date.now() + VALIDADE.conviteMs);
 
     // Cria usuário com status pendente e sem senha
-    await Usuario.create({
+    const convidado = await Usuario.create({
       nome,
       email,
       senha: null,
       role: normalizeRole(role),
       status: 'pendente',
-      conviteToken: token,
+      conviteToken: hashToken(token),
       conviteExpiracao: expiracao,
       funcionarioId: funcionarioId || null,
+    });
+
+    await auditoria.registrar({
+      req, acao: 'usuario.convidado', entidade: 'usuario', entidadeId: convidado && convidado.id,
+      detalhes: { papel: normalizeRole(role) },
     });
 
     // Delega o envio do e-mail ao emailService (SRP)
@@ -206,7 +351,7 @@ async function convidarUsuario(req, res, next) {
 
 async function definirSenhaConvite(req, res, next) {
   try {
-    const { token, senha } = req.body;
+    const { token, senha, aceiteTermos } = req.body;
 
     if (!token || !senha) {
       return res.status(400).json({
@@ -215,13 +360,11 @@ async function definirSenhaConvite(req, res, next) {
       });
     }
 
-    // [OWASP A03] Trim previne bypass com espaços: '      ' teria length >= 6
+    // [OWASP A03] Trim previne bypass com espaços
     const senhaTrimmed = String(senha).trim();
-    if (senhaTrimmed.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'A senha deve ter no mínimo 6 caracteres.',
-      });
+    const erroSenha = validarSenha(senhaTrimmed);
+    if (erroSenha) {
+      return res.status(400).json({ success: false, message: erroSenha });
     }
 
     // [OWASP A03] Valida que token é hex de 64 chars (32 bytes)
@@ -232,13 +375,21 @@ async function definirSenhaConvite(req, res, next) {
       });
     }
 
+    // LGPD: o convite web exige aceite explícito dos termos e da política de privacidade.
+    if (aceiteTermos !== true) {
+      return res.status(400).json({
+        success: false,
+        message: 'É necessário aceitar os Termos de Uso e a Política de Privacidade.',
+      });
+    }
+
     // Busca usuário pelo token e valida expiração
     const usuario = await Usuario.findOne({
       // Rota pública: o token de convite é único globalmente e já identifica
       // o usuário — e, por consequência, a empresa dele.
       ignoraTenant: true,
       where: {
-        conviteToken: token,
+        conviteToken: hashToken(token),
         conviteExpiracao: { [Op.gt]: new Date() },
         status: 'pendente',
       },
@@ -251,6 +402,11 @@ async function definirSenhaConvite(req, res, next) {
       });
     }
 
+    const erroSenhaConta = validarSenha(senhaTrimmed, usuario.email);
+    if (erroSenhaConta) {
+      return res.status(400).json({ success: false, message: erroSenhaConta });
+    }
+
     // Hash da senha e ativação da conta
     const senhaHash = await bcrypt.hash(senhaTrimmed, 10);
 
@@ -259,6 +415,17 @@ async function definirSenhaConvite(req, res, next) {
       status: 'ativo',
       conviteToken: null,
       conviteExpiracao: null,
+      resetToken: null,
+      resetExpiracao: null,
+      termosAceitosEm: new Date(),
+      termosVersao: TERMOS_VERSAO,
+      ...revogarSessoes(usuario),
+    });
+
+    await auditoria.registrar({
+      req, usuario: { id: usuario.id }, empresaId: usuario.empresaId,
+      acao: 'auth.senha.definida', entidade: 'usuario', entidadeId: usuario.id,
+      detalhes: { origem: 'convite', termosVersao: TERMOS_VERSAO },
     });
 
     return res.json({

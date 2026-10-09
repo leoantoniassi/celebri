@@ -19,6 +19,10 @@ if (-not (Test-Path .env)) {
     exit 1
 }
 
+# Dev: junta o override que publica Postgres/API em 127.0.0.1 (o compose principal não publica).
+$env:COMPOSE_PATH_SEPARATOR = ":"
+$env:COMPOSE_FILE = "docker-compose.yml:docker-compose.dev.yml"
+
 function Invoke-Step {
     param([string]$Description, [string[]]$Command)
     Write-Host "==> $Description..."
@@ -35,7 +39,7 @@ Invoke-Step "Rodando seed" @("docker", "compose", "exec", "backend", "npm", "run
 
 Write-Host ""
 Write-Host "Ambiente no ar:"
-Write-Host "  API:      http://localhost:3001/api/health"
+Write-Host "  API:      http://127.0.0.1:3001/api/health"
 Write-Host "  Frontend: http://localhost:8080"
 Write-Host ""
 Write-Host "Credenciais de teste (tenant: celebri):"

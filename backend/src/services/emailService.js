@@ -8,6 +8,7 @@
 // ============================================================
 const nodemailer = require('nodemailer');
 const { obterMarca } = require('../utils/brand');
+const { urlBaseFrontend } = require('../config/seguranca');
 
 /**
  * Cria um transporter Nodemailer a partir das variáveis de ambiente.
@@ -72,6 +73,14 @@ function montarHtml({ marca, emoji, titulo, saudacao, corpo, textoBotao, link, c
 }
 
 /**
+ * Registra falha de envio sem dados pessoais: nem o destinatário nem o
+ * objeto de erro completo (que carrega o endereço e a resposta do SMTP).
+ */
+function logarFalhaEnvio(tipo, error) {
+  console.error(`[Email] Falha ao enviar ${tipo}: ${error?.code || 'ERRO'}`);
+}
+
+/**
  * Envia e-mail de convite para o novo usuário.
  * @param {Object} params
  * @param {string} params.nome - Nome do destinatário
@@ -80,14 +89,13 @@ function montarHtml({ marca, emoji, titulo, saudacao, corpo, textoBotao, link, c
  * @param {string} [params.empresaId] - Tenant; omitido, usa o contexto da requisição
  */
 async function enviarConvite({ nome, email, token, empresaId }) {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = urlBaseFrontend();
   const linkConvite = `${frontendUrl}/definir-senha?token=${token}`;
   const marca = await obterMarca(empresaId);
   const transporter = criarTransporter();
 
   try {
-    console.log(`[Email] Iniciando envio de convite para ${email}...`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
       subject: `🎉 Você foi convidado para o sistema ${marca.nomeFantasia}!`,
@@ -102,9 +110,9 @@ async function enviarConvite({ nome, email, token, empresaId }) {
         rodape: 'Se você não esperava este convite, pode ignorar este e-mail com segurança.',
       }),
     });
-    console.log(`[Email] Convite enviado com sucesso! Message ID: ${info.messageId}`);
+    console.log('[Email] Convite enviado.');
   } catch (error) {
-    console.error(`[Email] Erro ao enviar convite para ${email}:`, error);
+    logarFalhaEnvio('convite', error);
     throw error;
   }
 }
@@ -118,14 +126,13 @@ async function enviarConvite({ nome, email, token, empresaId }) {
  * @param {string} [params.empresaId] - Tenant; omitido, usa o contexto da requisição
  */
 async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = urlBaseFrontend();
   const linkReset = `${frontendUrl}/redefinir-senha?token=${token}`;
   const marca = await obterMarca(empresaId);
   const transporter = criarTransporter();
 
   try {
-    console.log(`[Email] Iniciando envio de recuperação para ${email}...`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
       subject: `🔒 Redefinição de senha - ${marca.nomeFantasia}`,
@@ -140,11 +147,16 @@ async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
         rodape: 'Se você não solicitou a redefinição de senha, pode ignorar este e-mail com segurança. Sua senha atual permanecerá inalterada.',
       }),
     });
-    console.log(`[Email] Recuperação enviada com sucesso! Message ID: ${info.messageId}`);
+    console.log('[Email] Recuperação enviada.');
   } catch (error) {
-    console.error(`[Email] Erro ao enviar recuperação para ${email}:`, error);
+    logarFalhaEnvio('recuperação', error);
     throw error;
   }
+}
+
+/** Opt-in explícito de desenvolvimento; a flag é ignorada em produção. */
+function devLogCodigoAtivo(env = process.env) {
+  return env.DEV_LOG_CODIGO_ACESSO === 'true' && env.NODE_ENV !== 'production';
 }
 
 /**
@@ -156,10 +168,12 @@ async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
  * @param {string} params.empresaId
  */
 async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
-  // Sem SMTP no ambiente de desenvolvimento, o código vai para o log
-  // para o app ainda poder ser testado ponta a ponta.
+  // Sem SMTP (só fora de produção) o e-mail é pulado. O código só aparece no
+  // log com o opt-in DEV_LOG_CODIGO_ACESSO=true, para o fluxo mobile em
+  // desenvolvimento; nunca em produção e nunca junto do e-mail.
   if (!process.env.EMAIL_HOST && process.env.NODE_ENV !== 'production') {
-    console.log(`[Email] SMTP não configurado — código de primeiro acesso de ${email}: ${codigo}`);
+    console.warn('[Email] SMTP não configurado — código de primeiro acesso não enviado.');
+    if (devLogCodigoAtivo()) console.warn(`[DEV] Código de primeiro acesso: ${codigo}`);
     return;
   }
 
@@ -167,8 +181,7 @@ async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
   const transporter = criarTransporter();
 
   try {
-    console.log(`[Email] Iniciando envio de código de primeiro acesso para ${email}...`);
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
       subject: `🔑 Seu código de acesso - ${marca.nomeFantasia}`,
@@ -182,11 +195,11 @@ async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
         rodape: 'Se você não tentou acessar o aplicativo, pode ignorar este e-mail com segurança.',
       }),
     });
-    console.log(`[Email] Código enviado com sucesso! Message ID: ${info.messageId}`);
+    console.log('[Email] Código enviado.');
   } catch (error) {
-    console.error(`[Email] Erro ao enviar código para ${email}:`, error);
+    logarFalhaEnvio('código', error);
     throw error;
   }
 }
 
-module.exports = { enviarConvite, enviarEmailRecuperacaoSenha, enviarCodigoPrimeiroAcesso };
+module.exports = { enviarConvite, enviarEmailRecuperacaoSenha, enviarCodigoPrimeiroAcesso, devLogCodigoAtivo };

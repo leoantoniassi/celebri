@@ -13,7 +13,7 @@ import api from '../services/api';
 //   1. Decode manual da segunda parte do JWT (payload base64url).
 //   2. setTimeout para `(exp - now - MARGEM_SEGUNDOS)`.
 //   3. CustomEvent "celebri:sessao-expirada" disparado pelo api.js
-//      quando recebe 401/403, para que o interceptor não precise
+//      quando recebe 401, para que o interceptor não precise
 //      importar este contexto (evita dependência circular).
 //   4. Evento "storage" para sincronizar logout entre múltiplas abas.
 // ============================================================
@@ -115,7 +115,7 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', handleStorage);
   }, [cancelarTimer]);
 
-  // Ouve o CustomEvent disparado pelo interceptor do api.js para logout por 401/403
+  // Ouve o CustomEvent disparado pelo interceptor do api.js para logout por 401
   useEffect(() => {
     const handleSessaoExpirada = () => logout(true);
     window.addEventListener('celebri:sessao-expirada', handleSessaoExpirada);

@@ -8,21 +8,28 @@
 //
 // Cada arquivo roda dentro de uma transação: ou aplica inteiro, ou nada.
 // O controle fica na tabela schema_migrations, criada automaticamente.
+//
+// ORDEM: lexicográfica pelo NOME COMPLETO do arquivo (Array.sort padrão), não
+// só pelo prefixo numérico. Existem dois pares com o mesmo prefixo, já aplicados
+// em bases existentes (schema_migrations guarda o nome, por isso NÃO renomear):
+//   006_expand_logo_url.sql        -> 006_usuario_funcionario_link.sql
+//   008_codigo_primeiro_acesso.sql -> 008_update_empresa_celebri.sql
+// Novas migrations devem usar prefixos únicos e crescentes (013_, 014_...).
+// Nomes exatos nunca se repetem (garantido por teste em migrateOrdem.test.js).
 // ============================================================
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
+const { resolverSsl } = require('../src/config/dbSsl');
+const { lerConexao } = require('../src/config/dbConexao');
 
 const DIR_MIGRATIONS = path.resolve(__dirname, '..', '..', 'database', 'migrations');
 
 function conectar() {
   return new Client({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
+    ...lerConexao(),
+    ssl: resolverSsl() || undefined,
   });
 }
 
@@ -32,6 +39,22 @@ function listarArquivos() {
     .readdirSync(DIR_MIGRATIONS)
     .filter((f) => f.endsWith('.sql'))
     .sort(); // ordem lexicográfica — por isso o prefixo numérico é obrigatório
+}
+
+// Chave do advisory lock da sessão: serializa dois processos (ex.: dois
+// containers subindo juntos) para não aplicarem a mesma migration em paralelo.
+const LOCK_MIGRATIONS = 727301;
+
+async function adquirirLock(client) {
+  await client.query('SELECT pg_advisory_lock($1)', [LOCK_MIGRATIONS]);
+}
+
+async function liberarLock(client) {
+  try {
+    await client.query('SELECT pg_advisory_unlock($1)', [LOCK_MIGRATIONS]);
+  } catch (_) {
+    // conexão já caiu: o Postgres libera o lock de sessão sozinho
+  }
 }
 
 async function garantirTabelaControle(client) {
@@ -69,7 +92,10 @@ async function aplicar(client, arquivo) {
 async function rodarMigrations() {
   const client = conectar();
   await client.connect();
+  let comLock = false;
   try {
+    await adquirirLock(client);
+    comLock = true;
     await garantirTabelaControle(client);
     const aplicadas = await versoesAplicadas(client);
     const arquivos = listarArquivos();
@@ -83,6 +109,7 @@ async function rodarMigrations() {
       console.log('✅ Migrations aplicadas com sucesso.');
     }
   } finally {
+    if (comLock) await liberarLock(client);
     await client.end();
   }
 }
@@ -91,8 +118,14 @@ async function main() {
   const [comando, argumento] = process.argv.slice(2);
   const client = conectar();
   await client.connect();
+  const aplicando = comando !== 'status' && comando !== 'baseline';
+  let comLock = false;
 
   try {
+    if (aplicando) {
+      await adquirirLock(client);
+      comLock = true;
+    }
     await garantirTabelaControle(client);
     const aplicadas = await versoesAplicadas(client);
     const arquivos = listarArquivos();
@@ -129,6 +162,7 @@ async function main() {
     }
     console.log('Concluído.');
   } finally {
+    if (comLock) await liberarLock(client);
     await client.end();
   }
 }
@@ -140,5 +174,5 @@ if (require.main === module) {
   });
 }
 
-module.exports = { rodarMigrations, conectar, listarArquivos, garantirTabelaControle, versoesAplicadas };
+module.exports = { LOCK_MIGRATIONS, rodarMigrations, conectar, listarArquivos, garantirTabelaControle, versoesAplicadas };
 

@@ -469,3 +469,27 @@ CREATE INDEX idx_escala_funcionario          ON escala                (esc_fun_i
 -- Evento_produto / Orcamento_produto
 CREATE INDEX idx_evento_produto_evento       ON evento_produto        (evp_evt_id);
 CREATE INDEX idx_orcamento_produto_orc       ON orcamento_produto     (orp_orc_id);
+
+-- ============================================================
+-- LGPD (migration 013): auditoria, anonimização e aceite de termos
+-- (convites.cnv_anonimizado_em e o restante do multi-tenant vêm das migrations)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS auditoria (
+    aud_id          UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+    aud_emp_id      UUID,
+    aud_usr_id      UUID,
+    aud_acao        VARCHAR(80)  NOT NULL,
+    aud_entidade    VARCHAR(60),
+    aud_entidade_id UUID,
+    aud_ip          VARCHAR(64),
+    aud_detalhes    JSONB,
+    aud_criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_emp_criado ON auditoria (aud_emp_id, aud_criado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_entidade   ON auditoria (aud_entidade, aud_entidade_id);
+
+ALTER TABLE clientes     ADD COLUMN IF NOT EXISTS cli_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS fun_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS for_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_aceitos_em TIMESTAMPTZ;
+ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_versao VARCHAR(20);

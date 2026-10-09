@@ -23,6 +23,7 @@ const Mesa = require('./Mesa');
 const ServicoEvento = require('./ServicoEvento');
 const Pedido = require('./Pedido');
 const PedidoItem = require('./PedidoItem');
+const Auditoria = require('./Auditoria');
 
 // ── Empresa (tenant) 1:N todas as entidades de negócio ───────
 // Toda linha do sistema pertence a um buffet contratante. O filtro por
@@ -178,4 +179,5 @@ module.exports = {
   ServicoEvento,
   Pedido,
   PedidoItem,
+  Auditoria,
 };

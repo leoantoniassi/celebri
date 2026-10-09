@@ -94,6 +94,25 @@ const Usuario = sequelize.define('Usuario', {
     defaultValue: 0,
     field: 'usr_codigo_tentativas',
   },
+  // Incrementada na troca de senha/papel e na suspensão da empresa; o
+  // middleware auth recusa tokens emitidos com versão anterior.
+  tokenVersion: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    field: 'usr_token_version',
+  },
+  // Aceite dos termos de uso / política de privacidade (LGPD).
+  termosAceitosEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'usr_termos_aceitos_em',
+  },
+  termosVersao: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'usr_termos_versao',
+  },
   criadoEm: {
     type: DataTypes.DATE,
     allowNull: false,

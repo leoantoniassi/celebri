@@ -7,6 +7,8 @@ const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { warning } = require('../utils/response');
 const { isValidUUID } = require('../utils/validators');
 const { saudacaoWhatsapp } = require('../utils/brand');
+const { contem } = require('../utils/escapeLike');
+const { garantirExistenciaNoTenant, erroFiltroUuid } = require('../utils/tenantFk');
 
 // Funcionário com e-mail ganha uma conta pendente para o app mobile. No
 // primeiro acesso ele recebe um código nesse e-mail e cria a própria senha.
@@ -49,15 +51,16 @@ async function listar(req, res, next) {
     if (busca !== undefined && typeof busca !== 'string') {
       return res.status(400).json({ success: false, message: 'Busca inválida.' });
     }
-    if (funcaoId !== undefined && typeof funcaoId !== 'string') {
-      return res.status(400).json({ success: false, message: 'Função inválida.' });
+    const erroFuncao = erroFiltroUuid(funcaoId, 'Função');
+    if (erroFuncao) {
+      return res.status(400).json({ success: false, message: erroFuncao });
     }
 
     const where = {};
     if (busca) {
       where[Op.or] = [
-        { nome:  { [Op.iLike]: `%${busca}%` } },
-        { email: { [Op.iLike]: `%${busca}%` } },
+        { nome:  { [Op.iLike]: contem(busca) } },
+        { email: { [Op.iLike]: contem(busca) } },
       ];
     }
     if (funcaoId) {
@@ -131,10 +134,7 @@ async function criar(req, res, next) {
       }
     }
 
-    const funcaoExiste = await Funcao.findOne({ where: { id: funcaoId } });
-    if (!funcaoExiste) {
-      return res.status(404).json({ success: false, message: 'Função não encontrada.' });
-    }
+    await garantirExistenciaNoTenant(Funcao, funcaoId, 'Função');
 
     const funcionario = await Funcionario.create({ nome, email: emailTratado, telefone, telefoneResidencial, funcaoId });
     await garantirContaApp(funcionario);
@@ -169,12 +169,7 @@ async function atualizar(req, res, next) {
 
     const { nome, email, telefone, telefoneResidencial, funcaoId } = req.body;
 
-    if (funcaoId) {
-      const funcaoExiste = await Funcao.findOne({ where: { id: funcaoId } });
-      if (!funcaoExiste) {
-        return res.status(404).json({ success: false, message: 'Função não encontrada.' });
-      }
-    }
+    await garantirExistenciaNoTenant(Funcao, funcaoId, 'Função');
 
     let emailUpdate = funcionario.email;
     if (email !== undefined) {

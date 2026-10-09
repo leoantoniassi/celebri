@@ -20,6 +20,7 @@ import ConfiguracoesPage from './pages/Configuracoes/ConfiguracoesPage';
 import DefinirSenhaPage from './pages/DefinirSenha/DefinirSenhaPage';
 import RecuperarSenhaPage from './pages/Login/RecuperarSenhaPage';
 import RedefinirSenhaPage from './pages/Login/RedefinirSenhaPage';
+import PrivacidadePage from './pages/Privacidade/PrivacidadePage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -72,6 +73,8 @@ function AppRoutes() {
       <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
       {/* Rota pública para ativação de conta via convite */}
       <Route path="/definir-senha" element={<DefinirSenhaPage />} />
+      {/* Política de privacidade e termos (pública, exigida pela LGPD) */}
+      <Route path="/privacidade" element={<PrivacidadePage />} />
       <Route
         path="/"
         element={

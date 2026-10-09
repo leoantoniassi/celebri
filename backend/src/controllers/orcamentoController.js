@@ -14,6 +14,7 @@ const {
 const { isValidUUID, gerarWarningPessoas } = require('../utils/validators');
 const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { saudacaoWhatsapp } = require('../utils/brand');
+const { garantirExistenciaNoTenant, erroFiltroUuid } = require('../utils/tenantFk');
 
 function respostaNaoEncontrado(res, mensagem = "Orçamento não encontrado.") {
   return res.status(404).json({ success: false, message: mensagem });
@@ -47,6 +48,14 @@ async function listar(req, res, next) {
     }
     if (localId) {
       where.localId = localId;
+    }
+
+    if (typeof status !== 'undefined' && typeof status !== 'string') {
+      return respostaErro(res, 400, "Status inválido.");
+    }
+    const erroLocal = erroFiltroUuid(localId, 'Local');
+    if (erroLocal) {
+      return respostaErro(res, 400, erroLocal);
     }
 
     const { count, rows } = await Orcamento.scope(scope).findAndCountAll({
@@ -134,16 +143,14 @@ async function criar(req, res, next) {
       return respostaErro(res, 400, "O campo Total de Pessoas deve ser um número não negativo.");
     }
 
-    const cliente = await Cliente.findOne({ where: { id: clienteId } });
-    if (!cliente) {
-      return respostaErro(res, 404, "Cliente não encontrado.");
+    await garantirExistenciaNoTenant(Cliente, clienteId, 'Cliente');
+    await garantirExistenciaNoTenant(Local, localId, 'Local');
+    if (produtos !== undefined && !Array.isArray(produtos)) {
+      return respostaErro(res, 400, "Lista de produtos inválida.");
     }
-
-    if (localId) {
-      const localExiste = await Local.findOne({ where: { id: localId } });
-      if (!localExiste) {
-        return respostaErro(res, 404, "Local não encontrado.");
-      }
+    for (const p of produtos || []) {
+      if (!p || !p.produtoId) return respostaErro(res, 400, "Produto inválido.");
+      await garantirExistenciaNoTenant(Produto, p.produtoId, 'Produto');
     }
 
     const erroData = validarDatas(dataEvento, horarioTermino);
@@ -219,12 +226,8 @@ async function atualizar(req, res, next) {
 
     const { clienteId, localId, nome, valorTotal, dataValidade, dataEvento, horarioTermino, qtdPessoas, qtdAdultos, qtdCriancas, qtdBebes, observacoes } = req.body;
 
-    if (localId !== undefined && localId !== null) {
-      const localExiste = await Local.findOne({ where: { id: localId } });
-      if (!localExiste) {
-        return respostaErro(res, 404, "Local não encontrado.");
-      }
-    }
+    await garantirExistenciaNoTenant(Cliente, clienteId, 'Cliente');
+    await garantirExistenciaNoTenant(Local, localId, 'Local');
 
     if (qtdPessoas !== undefined && (qtdPessoas === null || typeof qtdPessoas !== 'number' || qtdPessoas < 0)) {
       return respostaErro(res, 400, "O campo Total de Pessoas deve ser um número não negativo.");

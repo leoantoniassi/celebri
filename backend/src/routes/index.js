@@ -22,6 +22,7 @@ router.use('/dashboard',    require('./dashboard.routes'));
 router.use('/usuarios',     require('./usuarios.routes'));
 router.use('/convites',     require('./convites.routes'));
 router.use('/portaria',     require('./portaria.routes'));
+router.use('/lgpd',         require('./lgpd.routes'));
 
 const { operacaoRouter, mesasRouter, servicosRouter } = require('./operacao.routes');
 router.use('/operacao',     operacaoRouter);

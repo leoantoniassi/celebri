@@ -191,7 +191,7 @@ describe('Convite e Ativação de Usuários', () => {
 
       const res = await request(app)
         .post('/api/usuarios/definir-senha')
-        .send({ token: tokenValido, senha: 'minha_senha_segura' });
+        .send({ token: tokenValido, senha: 'minha_senha_segura1', aceiteTermos: true });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -200,8 +200,27 @@ describe('Convite e Ativação de Usuários', () => {
           status: 'ativo',
           conviteToken: null,
           conviteExpiracao: null,
+          termosVersao: expect.any(String),
+          termosAceitosEm: expect.any(Date),
         })
       );
+    });
+
+    test.each([
+      ['ausente', {}],
+      ['false', { aceiteTermos: false }],
+      ['string "true"', { aceiteTermos: 'true' }],
+    ])('LGPD: sem aceite dos termos (%s) responde 400 e não consulta nem altera a conta', async (_n, extra) => {
+      const mockUser = { ...mockUsuario, update: jest.fn() };
+      Usuario.findOne.mockResolvedValue(mockUser);
+
+      const res = await request(app)
+        .post('/api/usuarios/definir-senha')
+        .send({ token: tokenValido, senha: 'minha_senha_segura1', ...extra });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Termos de Uso');
+      expect(mockUser.update).not.toHaveBeenCalled();
     });
 
     test('deve retornar 400 para token não encontrado ou expirado', async () => {
@@ -209,20 +228,20 @@ describe('Convite e Ativação de Usuários', () => {
 
       const res = await request(app)
         .post('/api/usuarios/definir-senha')
-        .send({ token: tokenValido, senha: 'senha123' });
+        .send({ token: tokenValido, senha: 'senha123456', aceiteTermos: true });
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.message).toContain('Token inválido ou expirado');
     });
 
-    test('deve retornar 400 para senha com menos de 6 caracteres', async () => {
+    test('deve retornar 400 para senha com menos de 10 caracteres', async () => {
       const res = await request(app)
         .post('/api/usuarios/definir-senha')
         .send({ token: tokenValido, senha: '123' });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('mínimo 6 caracteres');
+      expect(res.body.message).toContain('mínimo 10 caracteres');
     });
 
     test('deve rejeitar senha composta apenas de espaços (bypass de trim)', async () => {
@@ -231,13 +250,13 @@ describe('Convite e Ativação de Usuários', () => {
         .send({ token: tokenValido, senha: '       ' }); // 7 espaços
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('mínimo 6 caracteres');
+      expect(res.body.message).toContain('mínimo 10 caracteres');
     });
 
     test('deve retornar 400 para token com formato inválido (não hex)', async () => {
       const res = await request(app)
         .post('/api/usuarios/definir-senha')
-        .send({ token: 'token-invalido-nao-eh-hex', senha: 'senha123' });
+        .send({ token: 'token-invalido-nao-eh-hex', senha: 'senha123456' });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('Token inválido');

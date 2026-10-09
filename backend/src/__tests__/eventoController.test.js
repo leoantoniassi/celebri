@@ -2,7 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const { Evento, Cliente, Local, Orcamento } = require('../models');
 
-jest.mock('../middleware/auth', () => (req, res, next) => next());
+jest.mock('../middleware/auth', () => (req, res, next) => { req.user = { id: 'u-1', role: 'gerente' }; next(); });
 jest.mock('../middleware/roles', () => () => (req, res, next) => next());
 
 jest.mock('../models', () => ({

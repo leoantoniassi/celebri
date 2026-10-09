@@ -6,7 +6,7 @@ const express = require('express');
 
 jest.mock('../services/documentoService');
 jest.mock('../utils/fileUtils');
-jest.mock('../middleware/auth', () => (req, res, next) => next());
+jest.mock('../middleware/auth', () => (req, res, next) => { req.user = { id: 'u-1', role: 'gerente' }; next(); });
 jest.mock('../middleware/roles', () => () => (req, res, next) => next());
 
 const documentoService = require('../services/documentoService');
@@ -33,7 +33,7 @@ describe('GET /documentos/:id/arquivo — abrirArquivo', () => {
       err.statusCode = 404;
       documentoService.findDocumentoOrFail.mockRejectedValue(err);
 
-      const res = await request(app).get('/documentos/999/arquivo');
+      const res = await request(app).get('/documentos/00000000-0000-4000-8000-000000000999/arquivo');
 
       expect(res.status).toBe(404);
       expect(res.body).toEqual({
@@ -47,7 +47,7 @@ describe('GET /documentos/:id/arquivo — abrirArquivo', () => {
       documentoService.findDocumentoOrFail.mockResolvedValue(doc);
       documentoService.infoArquivo.mockReturnValue({ caminho: doc.caminhoUrl, isExterno: true });
 
-      const res = await request(app).get('/documentos/1/arquivo');
+      const res = await request(app).get('/documentos/00000000-0000-4000-8000-000000000001/arquivo');
 
       expect(res.status).toBe(400);
       expect(res.body).toEqual({
@@ -62,12 +62,12 @@ describe('GET /documentos/:id/arquivo — abrirArquivo', () => {
       documentoService.infoArquivo.mockReturnValue({ caminho: doc.caminhoUrl, isExterno: false });
       sanitizarCaminhoLocal.mockReturnValue(null);
 
-      const res = await request(app).get('/documentos/2/arquivo');
+      const res = await request(app).get('/documentos/00000000-0000-4000-8000-000000000002/arquivo');
 
       expect(res.status).toBe(400);
       expect(res.body).toEqual({
         success: false,
-        message: 'Caminho de arquivo inválido ou extensão não permitida.',
+        message: 'Caminho de arquivo inválido.',
       });
     });
 
@@ -78,7 +78,7 @@ describe('GET /documentos/:id/arquivo — abrirArquivo', () => {
       sanitizarCaminhoLocal.mockReturnValue('/uploads/documentos/contrato.pdf');
       arquivoExiste.mockResolvedValue(false);
 
-      const res = await request(app).get('/documentos/3/arquivo');
+      const res = await request(app).get('/documentos/00000000-0000-4000-8000-000000000003/arquivo');
 
       expect(res.status).toBe(404);
       expect(res.body).toEqual({
@@ -100,7 +100,7 @@ describe('GET /documentos/:id/arquivo — abrirArquivo', () => {
       sanitizarCaminhoLocal.mockReturnValue(tmpFile);
       arquivoExiste.mockResolvedValue(true);
 
-      const res = await request(app).get('/documentos/4/arquivo');
+      const res = await request(app).get('/documentos/00000000-0000-4000-8000-000000000004/arquivo');
 
       expect(res.status).toBe(200);
 

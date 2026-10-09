@@ -152,6 +152,9 @@ export default function LoginPage() {
               <span className="material-symbols-outlined text-secondary text-sm filled">favorite</span>
               Design com excelência para eventos inesquecíveis
             </p>
+            <Link to="/privacidade" className="mt-3 inline-block text-xs font-semibold text-secondary hover:text-primary transition-colors">
+              Política de Privacidade e Termos de Uso
+            </Link>
           </footer>
         </div>
       </section>

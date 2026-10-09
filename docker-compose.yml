@@ -7,16 +7,27 @@ services:
     container_name: celebri_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME:?defina DB_NAME no .env}
+      POSTGRES_USER: ${DB_USER:?defina DB_USER no .env}
+      # Obrigatória: sem senha o Postgres não sobe (nunca usamos POSTGRES_HOST_AUTH_METHOD=trust).
+      POSTGRES_PASSWORD: ${DB_PASS:?defina DB_PASS no .env}
+      # Autenticação SCRAM em conexões TCP ao inicializar um volume novo.
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
       TZ: America/Sao_Paulo
-    ports:
-      - "${DB_PORT}:5432"
+    # Sem `ports`: o Postgres só é alcançável pela rede interna `backend`.
+    # Para acessá-lo do host em dev, use o override docker-compose.dev.yml.
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    # cap_drop não é aplicado aqui: o entrypoint do Postgres precisa de CHOWN/SETUID/
+    # SETGID/FOWNER/DAC_OVERRIDE para ajustar o PGDATA e trocar de usuário.
+    # mem_limit: 1g
+    # pids_limit: 200
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      # - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
@@ -32,48 +43,99 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3001
+      # Padrão seguro: production. Para dev local defina NODE_ENV=development no
+      # .env (o .env.example já traz isso; liga log de SQL e erros detalhados).
+      NODE_ENV: ${NODE_ENV:-production}
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
-      JWT_EXPIRES_IN: 24h
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # LGPD: versão dos termos aceitos e prazos de retenção (npm run purge:retencao).
+      TERMOS_VERSAO: ${TERMOS_VERSAO:-1.0}
+      RETENCAO_DIAS: ${RETENCAO_DIAS:-1825}
+      RETENCAO_CONVITES_DIAS: ${RETENCAO_CONVITES_DIAS:-180}
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER:?defina DB_USER no .env}
+      DB_PASS: ${DB_PASS:?defina DB_PASS no .env}
+      DB_NAME: ${DB_NAME:?defina DB_NAME no .env}
+      # O Postgres do compose (host "db") não tem TLS; o backend só liga SSL
+      # sozinho para hosts externos. Para banco gerenciado, defina DB_SSL/DB_SSL_CA.
+      DB_SSL: ${DB_SSL:-}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-}
       TZ: America/Sao_Paulo
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
       EMAIL_FROM: ${EMAIL_FROM}
-      FRONTEND_URL: ${FRONTEND_URL}
-    ports:
-      - "3001:3001"
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      # Pasta base dos documentos locais (subpasta por empresa); fica no volume backend_uploads.
+      DOCUMENTOS_DIR: ${DOCUMENTOS_DIR:-/app/uploads/documentos}
+    # Sem `ports`: a API não é publicada no host; só o nginx do frontend a alcança
+    # (proxy /api -> backend:3001). Em dev, docker-compose.dev.yml publica em 127.0.0.1:3001.
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Raiz somente leitura; a API só grava no volume backend_uploads e em /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # mem_limit: 512m
+    # pids_limit: 200
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     volumes:
       - backend_uploads:/app/uploads
       - ./database:/database:ro
-      - ./docs:/app/docs
+      - ./docs:/app/docs:ro
     depends_on:
       db:
         condition: service_healthy
 
   # ============================
-  # 🎨 Frontend (React + Vite HMR)
+  # 🎨 Frontend (React + Nginx)
   # ============================
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+    build: ./frontend
     container_name: celebri_web
     restart: unless-stopped
+    # nginx-unprivileged escuta 8080 no container. Porta do host configurável (WEB_PORT).
     ports:
-      - "8080:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_BACKEND_URL=http://backend:3001
-    depends_on:
+      - "${WEB_PORT:-8080}:8080"
+    networks:
       - backend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    # mem_limit: 256m
+    # pids_limit: 100
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    depends_on:
+      backend:
+        condition: service_healthy
+
+# Rede interna dedicada: db, backend e frontend se enxergam por nome; nada além
+# das portas explicitamente publicadas fica exposto ao host.
+networks:
+  backend:
+    driver: bridge
 
 volumes:
   pgdata:

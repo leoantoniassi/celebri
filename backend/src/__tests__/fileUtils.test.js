@@ -1,4 +1,6 @@
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const { detectarTipo, isUrlExterna, sanitizarCaminhoLocal } = require('../utils/fileUtils');
 
 describe('fileUtils', () => {
@@ -36,40 +38,107 @@ describe('fileUtils', () => {
   });
 
   describe('sanitizarCaminhoLocal', () => {
-    const originalPlatform = process.platform;
+    const EMPRESA_A = '11111111-1111-4111-8111-111111111111';
+    const EMPRESA_B = '22222222-2222-4222-8222-222222222222';
+    let base;
+    let fora;
+    const original = process.env.DOCUMENTOS_DIR;
 
-    afterEach(() => {
-      Object.defineProperty(process, 'platform', {
-        value: originalPlatform,
-        configurable: true,
-      });
+    beforeAll(() => {
+      base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'docs-base-')));
+      fora = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'docs-fora-')));
+      process.env.DOCUMENTOS_DIR = base;
+      fs.mkdirSync(path.join(base, EMPRESA_A, 'sub'), { recursive: true });
+      fs.mkdirSync(path.join(base, EMPRESA_B), { recursive: true });
+      fs.writeFileSync(path.join(base, EMPRESA_A, 'sub', 'ok.pdf'), 'x');
+      fs.writeFileSync(path.join(base, EMPRESA_B, 'segredo.pdf'), 'x');
+      fs.writeFileSync(path.join(fora, 'externo.pdf'), 'x');
+      fs.symlinkSync(path.join(fora, 'externo.pdf'), path.join(base, EMPRESA_A, 'link.pdf'));
+      fs.symlinkSync(fora, path.join(base, EMPRESA_A, 'dirlink'));
+      fs.symlinkSync(path.join(base, EMPRESA_B), path.join(base, EMPRESA_A, 'outro'));
     });
 
-    test('deve retornar null para caminhos com parent directory traversal (..)', async () => {
-      const res = await sanitizarCaminhoLocal('C:\\Users\\..\\documento.pdf');
-      expect(res).toBeNull();
+    afterAll(() => {
+      if (original === undefined) delete process.env.DOCUMENTOS_DIR;
+      else process.env.DOCUMENTOS_DIR = original;
+      fs.rmSync(base, { recursive: true, force: true });
+      fs.rmSync(fora, { recursive: true, force: true });
     });
 
-    test('deve retornar null para extensões não permitidas', async () => {
-      const res = await sanitizarCaminhoLocal('documento.exe');
-      expect(res).toBeNull();
+    test('resolve caminho relativo dentro da pasta do tenant', async () => {
+      const res = await sanitizarCaminhoLocal('sub/ok.pdf', EMPRESA_A);
+      expect(res).toBe(path.join(base, EMPRESA_A, 'sub', 'ok.pdf'));
     });
 
-    test('deve traduzir caminhos absolutos do Windows para Unix quando rodando no Linux', async () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-        configurable: true,
-      });
+    test('aceita separador de barra invertida em caminho relativo', async () => {
+      const res = await sanitizarCaminhoLocal('sub\\ok.pdf', EMPRESA_A);
+      expect(res).toBe(path.join(base, EMPRESA_A, 'sub', 'ok.pdf'));
+    });
 
-      const winPath = 'C:\\Users\\franc\\OneDrive\\documento.pdf';
-      const res = await sanitizarCaminhoLocal(winPath);
+    test('arquivo inexistente devolve caminho dentro do tenant (404 fica com o chamador)', async () => {
+      const res = await sanitizarCaminhoLocal('nao-existe.pdf', EMPRESA_A);
+      expect(res).toBe(path.join(base, EMPRESA_A, 'nao-existe.pdf'));
+    });
 
-      // Como o caminho traduzido '/Users/franc/OneDrive/documento.pdf' é absoluto,
-      // a função testa o fs.access. Se não existir, ela continuaria tentando buscar nos diretórios
-      // base, mas no final resolveria a partir do cwd ou retornaria o caminho traduzido.
-      // Como simulamos Linux e o arquivo não existe, ela retorna o path resolved do processo com o caminho.
-      // Vamos verificar se o caminho resultante contém a tradução '/Users/franc/OneDrive/documento.pdf'.
-      expect(res).toContain('/Users/franc/OneDrive/documento.pdf');
+    test.each([
+      ['absoluto unix', '/etc/passwd.pdf'],
+      ['absoluto unix existente', '/tmp/docs-fora-x/externo.pdf'],
+      ['absoluto windows', 'C:\\Users\\franc\\documento.pdf'],
+      ['absoluto windows com barra', 'C:/Users/documento.pdf'],
+      ['UNC', '\\\\servidor\\share\\a.pdf'],
+      ['parent traversal', '../outro/a.pdf'],
+      ['parent traversal no meio', 'sub/../../x.pdf'],
+      ['parent traversal windows', 'C:\\Users\\..\\documento.pdf'],
+      ['byte nulo', 'ok.pdf\0.png'],
+      ['extensão inválida', 'documento.exe'],
+      ['sem extensão', 'documento'],
+      ['vazio', ''],
+    ])('rejeita %s', async (_nome, entrada) => {
+      expect(await sanitizarCaminhoLocal(entrada, EMPRESA_A)).toBeNull();
+    });
+
+    test('rejeita entrada que não é string', async () => {
+      expect(await sanitizarCaminhoLocal(null, EMPRESA_A)).toBeNull();
+      expect(await sanitizarCaminhoLocal({}, EMPRESA_A)).toBeNull();
+    });
+
+    test('rejeita tenant ausente ou inválido', async () => {
+      expect(await sanitizarCaminhoLocal('sub/ok.pdf')).toBeNull();
+      expect(await sanitizarCaminhoLocal('sub/ok.pdf', null)).toBeNull();
+      expect(await sanitizarCaminhoLocal('sub/ok.pdf', '../x')).toBeNull();
+    });
+
+    test('não acessa arquivo de outro tenant', async () => {
+      // O arquivo de B só existe na pasta de B; para A resolve em A (inexistente)
+      const res = await sanitizarCaminhoLocal('segredo.pdf', EMPRESA_A);
+      expect(res).toBe(path.join(base, EMPRESA_A, 'segredo.pdf'));
+      expect(fs.existsSync(res)).toBe(false);
+    });
+
+    test.each([
+      ['%2e%2e/x.pdf'], ['..%2fx.pdf'], ['..\\x.pdf'], ['./../x.pdf'], ['sub/../../x.pdf'],
+      ['.. /x.pdf'], ['../ /x.pdf'], ['\uff0e\uff0e/x.pdf\0'], ['a.pdf\0.exe'], ['a.exe\0.pdf'],
+      ['a.pdf:stream'], ['file:///etc/passwd.pdf'], ['//host/share/a.pdf'], ['\\\\host\\s\\a.pdf'],
+      ['C:\\a.pdf'], ['a.pdf.'], ['sub./a.pdf'], ['a.pdf.exe'], ['a.PDF.exe'], ['a.exe'],
+      ['.env.pdf'], ['.git/x.png'], ['sub/.hidden.pdf'], ['/etc/passwd'], ['\n../x.pdf'],
+    ])('rejeita bypass %j', async (entrada) => {
+      expect(await sanitizarCaminhoLocal(entrada, EMPRESA_A)).toBeNull();
+    });
+
+    test('aceita extensão maiúscula legítima', async () => {
+      expect(await sanitizarCaminhoLocal('sub/OK.PDF', EMPRESA_A)).toBe(path.join(base, EMPRESA_A, 'sub', 'OK.PDF'));
+    });
+
+    test('bloqueia symlink de arquivo que escapa da pasta', async () => {
+      expect(await sanitizarCaminhoLocal('link.pdf', EMPRESA_A)).toBeNull();
+    });
+
+    test('bloqueia symlink de diretório que escapa da pasta', async () => {
+      expect(await sanitizarCaminhoLocal('dirlink/externo.pdf', EMPRESA_A)).toBeNull();
+    });
+
+    test('bloqueia symlink que aponta para a pasta de outro tenant', async () => {
+      expect(await sanitizarCaminhoLocal('outro/segredo.pdf', EMPRESA_A)).toBeNull();
     });
   });
 });

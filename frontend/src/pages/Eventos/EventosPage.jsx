@@ -177,7 +177,7 @@ export default function EventosPage() {
     try {
       const { data: res } = await api.get(`/eventos/${id}/whatsapp`);
       if (res.data?.link) {
-        window.open(res.data.link, '_blank');
+        window.open(res.data.link, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       await confirm(err.response?.data?.message || 'Erro ao gerar link do WhatsApp', { title: 'Erro', showCancel: false });
@@ -267,7 +267,7 @@ export default function EventosPage() {
   const handleWhatsAppConvite = async (convite) => {
     try {
       const { data: res } = await api.get(`/convites/${convite.id}/whatsapp`);
-      window.open(res.data.link, '_blank', 'noopener');
+      window.open(res.data.link, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setToast({ type: 'error', message: err.response?.data?.message || 'Erro ao gerar link do WhatsApp.' });
     }

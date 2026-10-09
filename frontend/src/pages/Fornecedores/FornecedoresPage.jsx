@@ -81,7 +81,7 @@ export default function FornecedoresPage() {
   const handleWhatsApp = async (id) => {
     try {
       const { data: res } = await api.get(`/fornecedores/${id}/whatsapp`);
-      window.open(res.data?.link || res.url, '_blank');
+      window.open(res.data?.link || res.url, '_blank', 'noopener,noreferrer');
     } catch {}
   };
 

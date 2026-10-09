@@ -77,7 +77,7 @@ export default function FuncionariosPage() {
   const handleWhatsApp = async (id) => {
     try {
       const { data: res } = await api.get(`/funcionarios/${id}/whatsapp`);
-      window.open(res.data?.link || res.url, '_blank');
+      window.open(res.data?.link || res.url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       await confirm('Erro ao abrir o WhatsApp', { title: 'Erro', showCancel: false });
     }

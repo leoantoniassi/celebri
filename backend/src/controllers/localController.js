@@ -3,6 +3,7 @@
 // ============================================================
 const { Op } = require('sequelize');
 const { Local } = require('../models');
+const { contem } = require('../utils/escapeLike');
 
 // GET /api/locais
 async function listar(req, res, next) {
@@ -12,16 +13,20 @@ async function listar(req, res, next) {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
     const offset = (pageNum - 1) * limitNum;
 
+    if ((busca !== undefined && typeof busca !== 'string') || (cidade !== undefined && typeof cidade !== 'string')) {
+      return res.status(400).json({ success: false, message: 'Filtro inválido.' });
+    }
+
     const where = {};
     if (busca) {
       where[Op.or] = [
-        { nome:       { [Op.iLike]: `%${busca}%` } },
-        { logradouro: { [Op.iLike]: `%${busca}%` } },
-        { bairro:     { [Op.iLike]: `%${busca}%` } },
+        { nome:       { [Op.iLike]: contem(busca) } },
+        { logradouro: { [Op.iLike]: contem(busca) } },
+        { bairro:     { [Op.iLike]: contem(busca) } },
       ];
     }
     if (cidade) {
-      where.cidade = { [Op.iLike]: `%${cidade}%` };
+      where.cidade = { [Op.iLike]: contem(cidade) };
     }
 
     const { count, rows } = await Local.findAndCountAll({

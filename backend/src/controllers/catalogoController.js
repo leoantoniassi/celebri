@@ -2,6 +2,15 @@
 // Controller: Catálogos de Buffet
 // ============================================================
 const { Catalogo } = require('../models');
+const { validarUrlHttp } = require('../utils/validators');
+
+const MSG_URL_INVALIDA = 'O link do catálogo deve começar com http:// ou https://.';
+
+/** Vazio -> null; http(s) válido -> URL; qualquer outra coisa -> undefined (inválido). */
+function lerUrlExterna(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === '') return null;
+  return validarUrlHttp(valor) || undefined;
+}
 
 // GET /api/catalogos
 async function listar(req, res, next) {
@@ -24,11 +33,16 @@ async function criar(req, res, next) {
       return res.status(400).json({ success: false, message: 'O título é obrigatório.' });
     }
 
+    const url = lerUrlExterna(urlExterna);
+    if (url === undefined) {
+      return res.status(400).json({ success: false, message: MSG_URL_INVALIDA });
+    }
+
     const catalogo = await Catalogo.create({
       titulo,
       descricao: descricao || null,
       precoBase: precoBase ? parseFloat(precoBase) : null,
-      urlExterna: urlExterna || null,
+      urlExterna: url,
     });
 
     return res.status(201).json({
@@ -51,11 +65,16 @@ async function atualizar(req, res, next) {
 
     const { titulo, descricao, precoBase, urlExterna, ativo } = req.body;
 
+    const url = urlExterna !== undefined ? lerUrlExterna(urlExterna) : catalogo.urlExterna;
+    if (url === undefined) {
+      return res.status(400).json({ success: false, message: MSG_URL_INVALIDA });
+    }
+
     await catalogo.update({
       titulo: titulo || catalogo.titulo,
       descricao: descricao !== undefined ? descricao : catalogo.descricao,
       precoBase: precoBase !== undefined ? (precoBase ? parseFloat(precoBase) : null) : catalogo.precoBase,
-      urlExterna: urlExterna !== undefined ? urlExterna : catalogo.urlExterna,
+      urlExterna: url,
       ativo: ativo !== undefined ? (ativo === 'true' || ativo === true) : catalogo.ativo,
       atualizadoEm: new Date(),
     });

@@ -2,7 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const { Local } = require('../models');
 
-jest.mock('../middleware/auth', () => (req, res, next) => next());
+jest.mock('../middleware/auth', () => (req, res, next) => { req.user = { id: 'u-1', role: 'gerente' }; next(); });
 
 jest.mock('../models', () => ({
   Local: {
@@ -110,7 +110,7 @@ describe('LocalController — capacidadeMaxima', () => {
       const mockLocal = { id: '1', nome: 'Salão A', capacidadeMaxima: 150 };
       Local.findOne.mockResolvedValue(mockLocal);
 
-      const res = await request(app).get('/api/locais/1');
+      const res = await request(app).get('/api/locais/00000000-0000-4000-8000-000000000001');
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

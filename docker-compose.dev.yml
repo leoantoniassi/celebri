@@ -1,0 +1,29 @@
+# ============================================================
+# Override de DESENVOLVIMENTO — nunca use em produção.
+# Publica Postgres e API apenas em loopback (127.0.0.1) para
+# psql/DBeaver/Postman/npm run dev no host.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# (dev-up.sh / dev-up.ps1 já fazem isso via COMPOSE_FILE.)
+# ============================================================
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+  backend:
+    ports:
+      - "127.0.0.1:3001:3001"
+  # Frontend com Vite HMR (mantido do compose anterior; so para dev)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    read_only: false
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_BACKEND_URL=http://backend:3001
+    healthcheck:
+      disable: true

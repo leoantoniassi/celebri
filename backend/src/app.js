@@ -4,18 +4,46 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const { lerTrustProxy, lerOrigensCors } = require('./config/seguranca');
 
 const app = express();
 
+// Atrás de nginx/load balancer, req.ip precisa vir do X-Forwarded-For para o
+// rate limit enxergar o cliente real. Padrão: false (sem proxy confiável).
+// Defina TRUST_PROXY com o número de proxies à frente da API (ex.: 1).
+app.set('trust proxy', lerTrustProxy());
+
 // ── Segurança ──────────────────────────────────────────────
-app.use(helmet());
+// A API só devolve JSON (e a página pública do convite, com estilos inline):
+// nada de scripts, frames ou recursos externos. A página do convite usa style=""
+// e imagem data:, por isso style-src 'unsafe-inline' e img-src data:.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      styleSrc: ["'unsafe-inline'"],
+      imgSrc: ['data:'],
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // o frontend (outra origem) consome a API
+  referrerPolicy: { policy: 'no-referrer' },
+}));
 
 // ── CORS ───────────────────────────────────────────────────
+// Sem fallback '*': em produção FRONTEND_URL é obrigatória (falha ao subir).
+const origensPermitidas = lerOrigensCors();
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    // Sem Origin (curl, app mobile, healthcheck): não é navegador, CORS não se aplica.
+    if (!origin || origensPermitidas.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Slug'],
 }));
@@ -23,9 +51,6 @@ app.use(cors({
 // ── Body Parsers ───────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// ── Servir arquivos de upload ──────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ── Rotas ──────────────────────────────────────────────────
 app.use('/api', routes);

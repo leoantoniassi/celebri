@@ -7,6 +7,7 @@ const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { warning } = require('../utils/response');
 const { isValidUUID } = require('../utils/validators');
 const { saudacaoWhatsapp } = require('../utils/brand');
+const { contem } = require('../utils/escapeLike');
 
 // GET /api/clientes
 async function listar(req, res, next) {
@@ -22,9 +23,9 @@ async function listar(req, res, next) {
     const where = {};
     if (busca) {
       where[Op.or] = [
-        { nome: { [Op.iLike]: `%${busca}%` } },
-        { email: { [Op.iLike]: `%${busca}%` } },
-        { rgCpf: { [Op.iLike]: `%${busca}%` } },
+        { nome: { [Op.iLike]: contem(busca) } },
+        { email: { [Op.iLike]: contem(busca) } },
+        { rgCpf: { [Op.iLike]: contem(busca) } },
       ];
     }
 

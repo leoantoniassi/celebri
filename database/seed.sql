@@ -1,3 +1,4 @@
+-- !!! REMOVER ANTES DE PUBLICAR: contas e senha de teste (123456). Ver docs/CHECKLIST_PRE_PUBLICACAO.md !!!
 -- ============================================================
 -- PROJETO MAIS ALEGRIA - DADOS FICTÍCIOS (20 REGISTROS POR TABELA)
 -- ============================================================

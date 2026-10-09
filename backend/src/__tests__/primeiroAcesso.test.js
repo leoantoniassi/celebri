@@ -123,7 +123,7 @@ describe('Primeiro acesso pelo app mobile', () => {
       request(app)
         .post('/api/auth/primeiro-acesso/confirmar')
         .set('X-Tenant-Slug', 'buffet-teste')
-        .send({ email: 'ana@teste.com', senha: 'senha123', ...body });
+        .send({ email: 'ana@teste.com', senha: 'senha123456', ...body });
 
     test('com código certo cria a senha, ativa a conta e devolve token', async () => {
       const usuario = pendente();

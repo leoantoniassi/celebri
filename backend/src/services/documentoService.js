@@ -1,12 +1,28 @@
-const { Documento } = require('../models');
-const { detectarTipo, isUrlExterna } = require('../utils/fileUtils');
+const { Documento, Cliente, Evento } = require('../models');
+const { detectarTipo, isUrlExterna, normalizarCaminhoRelativo } = require('../utils/fileUtils');
+const { garantirExistenciaNoTenant, erroReferencia } = require('../utils/tenantFk');
+
+const MSG_CAMINHO_INVALIDO =
+  'Caminho de arquivo inválido. Informe uma URL http(s) ou um caminho relativo com extensão .pdf, .jpg, .jpeg ou .png.';
+
+// Valida o campo caminhoUrl (criação e atualização). URLs http(s) passam; o
+// restante deve ser um caminho relativo seguro.
+function validarCaminho(caminhoUrl) {
+  if (typeof caminhoUrl !== 'string') return MSG_CAMINHO_INVALIDO;
+  if (isUrlExterna(caminhoUrl)) return null;
+  return normalizarCaminhoRelativo(caminhoUrl) ? null : MSG_CAMINHO_INVALIDO;
+}
+
+// Confere que cliente/evento existem no tenant (helper único de FK).
+async function validarReferencias({ clienteId, eventoId }) {
+  await garantirExistenciaNoTenant(Cliente, clienteId, 'Cliente');
+  await garantirExistenciaNoTenant(Evento, eventoId, 'Evento');
+}
 
 async function findDocumentoOrFail(id) {
   const documento = await Documento.findOne({ where: { id: id } });
   if (!documento) {
-    const err = new Error('Documento não encontrado.');
-    err.statusCode = 404;
-    throw err;
+    throw erroReferencia('Documento não encontrado.', 404);
   }
   return documento;
 }
@@ -15,11 +31,7 @@ function validarCriacao(body) {
   if (!body.nomeArquivo) return 'O nome do documento é obrigatório.';
   if (!body.caminhoUrl) return 'A localização do arquivo é obrigatória.';
 
-  if (!isUrlExterna(body.caminhoUrl) && body.caminhoUrl.includes('..')) {
-    return 'Caminho de arquivo inválido: não são permitidos segmentos "..".';
-  }
-
-  return null;
+  return validarCaminho(body.caminhoUrl);
 }
 
 function montarPayloadCriacao(body) {
@@ -30,6 +42,12 @@ function montarPayloadCriacao(body) {
     clienteId: body.clienteId || null,
     eventoId: body.eventoId || null,
   };
+}
+
+function validarAtualizacao(body) {
+  if (body.nomeArquivo !== undefined && !body.nomeArquivo) return 'O nome do documento é obrigatório.';
+  if (body.caminhoUrl !== undefined) return validarCaminho(body.caminhoUrl);
+  return null;
 }
 
 function montarPayloadAtualizacao(body) {
@@ -56,6 +74,8 @@ function infoArquivo(documento) {
 module.exports = {
   findDocumentoOrFail,
   validarCriacao,
+  validarAtualizacao,
+  validarReferencias,
   montarPayloadCriacao,
   montarPayloadAtualizacao,
   infoArquivo,

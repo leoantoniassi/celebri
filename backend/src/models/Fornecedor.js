@@ -57,6 +57,12 @@ const Fornecedor = sequelize.define('Fornecedor', {
     defaultValue: DataTypes.NOW,
     field: 'for_atualizado_em',
   },
+  // LGPD: preenchido quando os dados pessoais do titular foram anonimizados.
+  anonimizadoEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'for_anonimizado_em',
+  },
   deletadoEm: {
     type: DataTypes.DATE,
     allowNull: true,

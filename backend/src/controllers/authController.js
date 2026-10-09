@@ -1,7 +1,6 @@
 // ============================================================
 // Controller: Autenticação (Login / Register)
 // ============================================================
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
@@ -9,13 +8,45 @@ const { Usuario, Empresa, Funcionario, Funcao } = require('../models');
 const { resolverTenant } = require('../utils/resolverTenant');
 const emailService = require('../services/emailService');
 const { enviarEmailRecuperacaoSenha } = emailService;
+const { assinarToken, revogarSessoes, LIMITES, VALIDADE, TERMOS_VERSAO, MSG_MUITAS_TENTATIVAS } = require('../config/seguranca');
+const { validarSenha } = require('../utils/validators');
+const { gerarToken, hashToken } = require('../utils/tokens');
+const { criarBloqueio } = require('../middleware/bloqueioConta');
+const { criarContadorJanela } = require('../utils/janelaContador');
+const auditoria = require('../services/auditoriaService');
+
+/** Registra evento de autenticação da conta `usuario` (entidade fixa; sem e-mail, só o id). */
+const auditarConta = (req, usuario, empresaId, acao, detalhes) => auditoria.registrar({
+  req, usuario: { id: usuario.id }, empresaId, acao, entidade: 'usuario', entidadeId: usuario.id, detalhes,
+});
+
+// Bloqueio por conta (e-mail + empresa) após falhas seguidas. Em memória.
+const bloqueioLogin = criarBloqueio({
+  maxFalhas: LIMITES.loginMaxFalhas,
+  bloqueioMs: LIMITES.loginBloqueioMs,
+});
+
+// Reenvio do código de primeiro acesso: limite por conta.
+const limiteEnvioCodigo = criarContadorJanela({
+  max: LIMITES.codigoReenvioMax,
+  janelaMs: LIMITES.codigoReenvioJanelaMs,
+});
+
+// Hash bcrypt (custo 10) de um valor descartável. Usado quando a conta não
+// existe, para o login gastar o mesmo tempo e não revelar quais e-mails existem.
+const HASH_DUMMY = '$2a$10$lhIua72p5491AMeffBcxy.Xv5JdJWtKwtPNC9oeq7SCvOOYmwogg.';
+
+const MSG_CREDENCIAIS = 'Credenciais inválidas.';
+const EMAIL_MAX = 254;
+const SENHA_LOGIN_MAX = 1024; // evita bcrypt/Map com entradas gigantes
+const MSG_EMAIL_INVALIDO = 'Informe um e-mail válido.';
 
 // POST /api/auth/login
 async function login(req, res, next) {
   try {
     const { email, senha } = req.body;
 
-    if (!email || !senha) {
+    if (!email || !senha || typeof email !== 'string' || typeof senha !== 'string') {
       return res.status(400).json({
         success: false,
         message: 'Email e senha são obrigatórios.',
@@ -29,6 +60,17 @@ async function login(req, res, next) {
       return res.status(400).json({ success: false, message: erro });
     }
 
+    // Entradas absurdas não chegam ao bcrypt nem viram chave do bloqueio.
+    if (email.length > EMAIL_MAX || senha.length > SENHA_LOGIN_MAX) {
+      return res.status(401).json({ success: false, message: MSG_CREDENCIAIS });
+    }
+
+    // Bloqueio por conta, contado também para e-mails que não existem.
+    const chave = `${empresa.id}:${email.trim().toLowerCase()}`;
+    if (bloqueioLogin.restante(chave) > 0) {
+      return res.status(429).json({ success: false, message: MSG_MUITAS_TENTATIVAS });
+    }
+
     // super_admin (dono da plataforma) não pertence a empresa nenhuma.
     const usuario = await Usuario.findOne({
       where: {
@@ -37,31 +79,46 @@ async function login(req, res, next) {
       },
       ignoraTenant: true,
     });
-    if (!usuario || !usuario.senha) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciais inválidas.',
-      });
+
+    // Segunda chave, pelo id da conta: o super_admin vale em qualquer empresa
+    // (slug), então só a chave "empresa:e-mail" deixaria tentar 5 senhas por slug.
+    const chaveConta = usuario ? `conta:${usuario.id}` : null;
+    if (chaveConta && bloqueioLogin.restante(chaveConta) > 0) {
+      return res.status(429).json({ success: false, message: MSG_MUITAS_TENTATIVAS });
     }
 
+    // bcrypt.compare roda SEMPRE (hash dummy se a conta não existe ou ainda
+    // não tem senha), para o tempo de resposta não revelar se o e-mail existe.
+    // Converte hash $2y$ para $2a$ para garantir compatibilidade com o bcryptjs.
+    const hashCompativel = usuario?.senha ? usuario.senha.replace(/^\$2y\$/, '$2a$') : HASH_DUMMY;
+    const senhaConfere = await bcrypt.compare(senha, hashCompativel);
+
+    if (!usuario || !usuario.senha || !senhaConfere) {
+      bloqueioLogin.falhou(chave);
+      if (chaveConta) bloqueioLogin.falhou(chaveConta);
+      // Sem e-mail no log: só o id da conta (quando existe) e o IP.
+      const alvo = { req, usuario: usuario ? { id: usuario.id } : null, empresaId: empresa.id, entidade: 'usuario', entidadeId: usuario ? usuario.id : null };
+      await auditoria.registrar({ ...alvo, acao: 'auth.login.falha', detalhes: { motivo: usuario ? 'credenciais' : 'conta_inexistente' } });
+      if (bloqueioLogin.restante(chave) > 0 || (chaveConta && bloqueioLogin.restante(chaveConta) > 0)) {
+        await auditoria.registrar({ ...alvo, acao: 'auth.conta.bloqueada', detalhes: { falhasMax: LIMITES.loginMaxFalhas } });
+      }
+      return res.status(401).json({ success: false, message: MSG_CREDENCIAIS });
+    }
+
+    // Só depois de provar a senha é que se revela a suspensão da empresa.
     if (usuario.role !== 'super_admin' && empresa.status !== 'ativo') {
+      await auditarConta(req, usuario, empresa.id, 'auth.login.falha', { motivo: 'empresa_suspensa' });
       return res.status(403).json({
         success: false,
         message: 'Esta empresa está com o acesso suspenso. Fale com o suporte.',
       });
     }
 
-    // Verifica senha (converte hash $2y$ para $2a$ para garantir compatibilidade com o bcryptjs)
-    const hashCompativel = usuario.senha.replace(/^\$2y\$/, '$2a$');
-    const senhaValida = await bcrypt.compare(senha, hashCompativel);
-    if (!senhaValida) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciais inválidas.',
-      });
-    }
+    bloqueioLogin.limpar(chave);
+    if (chaveConta) bloqueioLogin.limpar(chaveConta);
 
     const sessao = await montarSessao(usuario, empresa);
+    await auditarConta(req, usuario, usuario.empresaId || empresa.id, 'auth.login.ok', { papel: usuario.role });
     return res.json({ success: true, message: 'Login realizado com sucesso!', ...sessao });
   } catch (error) {
     return next(error);
@@ -70,17 +127,7 @@ async function login(req, res, next) {
 
 /** Token JWT + dados do usuário, no formato devolvido pelo login. */
 async function montarSessao(usuario, empresa) {
-  const token = jwt.sign(
-    {
-      id: usuario.id,
-      email: usuario.email,
-      role: usuario.role,
-      empresaId: usuario.empresaId,
-      funcionarioId: usuario.funcionarioId,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-  );
+  const token = assinarToken(usuario);
 
   // Se a conta estiver vinculada a um funcionário de campo (app mobile),
   // traz os dados já resolvidos para evitar uma chamada extra do cliente.
@@ -112,10 +159,13 @@ async function montarSessao(usuario, empresa) {
 }
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CODIGO_VALIDADE_MS = 15 * 60 * 1000;
-const CODIGO_MAX_TENTATIVAS = 5;
+const MSG_TOKEN_INVALIDO = 'Token inválido ou expirado. Solicite a redefinição de senha novamente.';
 
-const hashCodigo = (codigo) => crypto.createHash('sha256').update(String(codigo)).digest('hex');
+const gerarCodigo = () => crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+
+/** Código de primeiro acesso gravado e ainda dentro da validade. */
+const temCodigoVigente = (usuario) =>
+  Boolean(usuario.codigoHash && usuario.codigoExpiracao && new Date(usuario.codigoExpiracao) > new Date());
 
 // POST /api/auth/identificar (público)
 // Primeiro passo do app mobile: o funcionário informa só o e-mail e
@@ -125,7 +175,7 @@ async function identificar(req, res, next) {
   try {
     const email = String(req.body?.email || '').trim();
     if (!EMAIL_VALIDO.test(email)) {
-      return res.status(400).json({ success: false, message: 'Informe um e-mail válido.' });
+      return res.status(400).json({ success: false, message: MSG_EMAIL_INVALIDO });
     }
 
     const usuarios = await Usuario.findAll({
@@ -173,7 +223,7 @@ async function enviarCodigoPrimeiroAcesso(req, res, next) {
   try {
     const email = String(req.body?.email || '').trim();
     if (!EMAIL_VALIDO.test(email)) {
-      return res.status(400).json({ success: false, message: 'Informe um e-mail válido.' });
+      return res.status(400).json({ success: false, message: MSG_EMAIL_INVALIDO });
     }
 
     const mensagem = 'Se o e-mail estiver cadastrado, você receberá um código de acesso.';
@@ -182,19 +232,29 @@ async function enviarCodigoPrimeiroAcesso(req, res, next) {
       return res.json({ success: true, message: mensagem });
     }
 
-    const codigo = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    // Limite por conta: reenvios não dão novas chances de adivinhar o código.
+    // O contador de tentativas só recomeça quando não há código vigente; com
+    // o limite já estourado e o código ainda válido, não se envia outro.
+    const tentativas = temCodigoVigente(usuario) ? (usuario.codigoTentativas || 0) : 0;
+    if (tentativas >= LIMITES.codigoMaxTentativas || !limiteEnvioCodigo.registrar(usuario.id)) {
+      return res.json({ success: true, message: mensagem });
+    }
+
+    const codigo = gerarCodigo();
     await usuario.update({
-      codigoHash: hashCodigo(codigo),
-      codigoExpiracao: new Date(Date.now() + CODIGO_VALIDADE_MS),
-      codigoTentativas: 0,
+      codigoHash: hashToken(codigo),
+      codigoExpiracao: new Date(Date.now() + LIMITES.codigoValidadeMs),
+      codigoTentativas: tentativas,
     });
 
+    // Falha de SMTP não pode virar 500 só para e-mails cadastrados (oráculo de
+    // enumeração). O emailService já registra a falha, sem dados pessoais.
     await emailService.enviarCodigoPrimeiroAcesso({
       nome: usuario.nome,
       email: usuario.email,
       codigo,
       empresaId: empresa.id,
-    });
+    }).catch(() => {});
 
     return res.json({ success: true, message: mensagem });
   } catch (error) {
@@ -202,9 +262,18 @@ async function enviarCodigoPrimeiroAcesso(req, res, next) {
   }
 }
 
+// Confirmações em andamento por e-mail. Sem isso, N requisições paralelas leem
+// codigoTentativas=0 antes de qualquer uma gravar e burlam o máximo de 5.
+const confirmando = new Set();
+
 // POST /api/auth/primeiro-acesso/confirmar (público)
 // Confere o código, grava a senha e já devolve a sessão, como o login.
 async function confirmarPrimeiroAcesso(req, res, next) {
+  const travaChave = String(req.body?.email || '').trim().toLowerCase();
+  if (confirmando.has(travaChave)) {
+    return res.status(429).json({ success: false, message: MSG_MUITAS_TENTATIVAS });
+  }
+  confirmando.add(travaChave);
   try {
     const email = String(req.body?.email || '').trim();
     const codigo = String(req.body?.codigo || '').trim();
@@ -213,24 +282,19 @@ async function confirmarPrimeiroAcesso(req, res, next) {
     if (!EMAIL_VALIDO.test(email) || !/^\d{6}$/.test(codigo)) {
       return res.status(400).json({ success: false, message: 'E-mail e código de 6 dígitos são obrigatórios.' });
     }
-    if (senha.length < 6) {
-      return res.status(400).json({ success: false, message: 'A senha deve ter no mínimo 6 caracteres.' });
+    const erroSenha = validarSenha(senha, email);
+    if (erroSenha) {
+      return res.status(400).json({ success: false, message: erroSenha });
     }
 
     const invalido = { success: false, message: 'Código inválido ou expirado. Solicite um novo código.' };
     const { empresa, usuario } = await buscarPendente(req, email);
-    if (
-      !usuario ||
-      !usuario.codigoHash ||
-      !usuario.codigoExpiracao ||
-      new Date(usuario.codigoExpiracao) <= new Date() ||
-      usuario.codigoTentativas >= CODIGO_MAX_TENTATIVAS
-    ) {
+    if (!usuario || !temCodigoVigente(usuario) || usuario.codigoTentativas >= LIMITES.codigoMaxTentativas) {
       return res.status(400).json(invalido);
     }
 
     const confere = crypto.timingSafeEqual(
-      Buffer.from(hashCodigo(codigo), 'hex'),
+      Buffer.from(hashToken(codigo), 'hex'),
       Buffer.from(usuario.codigoHash, 'hex')
     );
     if (!confere) {
@@ -246,12 +310,18 @@ async function confirmarPrimeiroAcesso(req, res, next) {
       codigoTentativas: 0,
       conviteToken: null,
       conviteExpiracao: null,
+      // O app mobile (fora deste repo) ainda não envia o aceite: só grava se vier.
+      ...(req.body?.aceiteTermos === true && { termosAceitosEm: new Date(), termosVersao: TERMOS_VERSAO }),
+      ...revogarSessoes(usuario),
     });
 
+    await auditarConta(req, usuario, usuario.empresaId, 'auth.senha.definida', { origem: 'primeiro_acesso', termosAceitos: req.body?.aceiteTermos === true });
     const sessao = await montarSessao(usuario, empresa);
     return res.json({ success: true, message: 'Senha criada com sucesso!', ...sessao });
   } catch (error) {
     return next(error);
+  } finally {
+    confirmando.delete(travaChave);
   }
 }
 
@@ -268,7 +338,7 @@ async function solicitarRecuperacaoSenha(req, res, next) {
     }
 
     // Validação de formato simples
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+    if (!EMAIL_VALIDO.test(String(email))) {
       return res.status(400).json({
         success: false,
         message: 'Formato de e-mail inválido.',
@@ -299,21 +369,24 @@ async function solicitarRecuperacaoSenha(req, res, next) {
     }
 
     // Gera token de 32 bytes (hex de 64 caracteres)
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiracao = new Date(Date.now() + 60 * 60 * 1000); // 1 hora de expiração
+    const token = gerarToken();
+    const expiracao = new Date(Date.now() + VALIDADE.resetSenhaMs);
 
+    // O banco guarda só o hash; o e-mail leva o token cru.
     await usuario.update({
-      resetToken: token,
+      resetToken: hashToken(token),
       resetExpiracao: expiracao,
     });
 
     // Envia o e-mail de recuperação de forma assíncrona
-    await enviarEmailRecuperacaoSenha({
+    // Mesma resposta mesmo se o SMTP falhar (evita oráculo de enumeração por
+    // status 500); o emailService já registra a falha, sem dados pessoais.
+    await Promise.resolve(enviarEmailRecuperacaoSenha({
       nome: usuario.nome,
       email: usuario.email,
       token,
       empresaId: empresa.id,
-    });
+    })).catch(() => {});
 
     return res.json({
       success: true,
@@ -337,18 +410,16 @@ async function redefinirSenha(req, res, next) {
     }
 
     const senhaTrimmed = String(senha).trim();
-    if (senhaTrimmed.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'A senha deve ter no mínimo 6 caracteres.',
-      });
+    const erroSenha = validarSenha(senhaTrimmed);
+    if (erroSenha) {
+      return res.status(400).json({ success: false, message: erroSenha });
     }
 
     // Valida se token é hex de 64 caracteres
     if (!/^[a-f0-9]{64}$/.test(String(token))) {
       return res.status(400).json({
         success: false,
-        message: 'Token inválido ou expirado. Solicite a redefinição de senha novamente.',
+        message: MSG_TOKEN_INVALIDO,
       });
     }
 
@@ -358,7 +429,7 @@ async function redefinirSenha(req, res, next) {
       // o usuário — e, por consequência, a empresa dele.
       ignoraTenant: true,
       where: {
-        resetToken: token,
+        resetToken: hashToken(token),
         resetExpiracao: { [Op.gt]: new Date() },
       },
     });
@@ -366,8 +437,14 @@ async function redefinirSenha(req, res, next) {
     if (!usuario) {
       return res.status(400).json({
         success: false,
-        message: 'Token inválido ou expirado. Solicite a redefinição de senha novamente.',
+        message: MSG_TOKEN_INVALIDO,
       });
+    }
+
+    // Senha igual ao e-mail da conta (só conhecido depois de achar o usuário).
+    const erroSenhaConta = validarSenha(senhaTrimmed, usuario.email);
+    if (erroSenhaConta) {
+      return res.status(400).json({ success: false, message: erroSenhaConta });
     }
 
     // Hash da nova senha
@@ -379,7 +456,16 @@ async function redefinirSenha(req, res, next) {
       senha: senhaHash,
       resetToken: null,
       resetExpiracao: null,
+      // Convite/código pendentes não podem sobrescrever a senha recém-definida.
+      status: 'ativo',
+      conviteToken: null,
+      conviteExpiracao: null,
+      codigoHash: null,
+      codigoExpiracao: null,
+      ...revogarSessoes(usuario), // derruba sessões abertas
     });
+
+    await auditarConta(req, usuario, usuario.empresaId, 'auth.senha.redefinida');
 
     return res.json({
       success: true,

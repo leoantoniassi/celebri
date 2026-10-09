@@ -1,3 +1,4 @@
+// !!! REMOVER ANTES DE PUBLICAR: seed com contas e senha de teste (123456). Ver docs/CHECKLIST_PRE_PUBLICACAO.md !!!
 // ============================================================
 // FESTIFY — Seed (popular banco via seed.sql de forma multitenant)
 // ============================================================

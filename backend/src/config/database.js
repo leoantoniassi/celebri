@@ -3,14 +3,19 @@
 // ============================================================
 const { Sequelize, Op } = require('sequelize');
 const { getEmpresaId } = require('../utils/tenantContext');
+const { resolverSsl } = require('./dbSsl');
+const { lerConexao } = require('./dbConexao');
+
+const conexao = lerConexao();
+const ssl = resolverSsl();
 
 const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
+  conexao.database,
+  conexao.user,
+  conexao.password,
   {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
+    host: conexao.host,
+    port: conexao.port,
     dialect: 'postgres',
     timezone: '-03:00',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -21,12 +26,7 @@ const sequelize = new Sequelize(
     },
     dialectOptions: {
       useUTC: false,
-      ...(process.env.NODE_ENV === 'production' && {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false
-        }
-      })
+      ...(ssl && { ssl }),
     },
     pool: {
       max: 10,

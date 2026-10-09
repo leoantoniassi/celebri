@@ -6,6 +6,8 @@
 > - PowerShell (Windows): `.\dev-up.ps1`
 > - Bash (Mac/Linux, ou Git Bash no Windows): `./dev-up.sh`
 >
+> Os scripts usam `docker-compose.dev.yml` (Postgres/API só em `127.0.0.1`); o compose principal não publica esses serviços.
+>
 > No Windows, se `bash ./dev-up.sh` der erro de WSL, é porque o `bash` do
 > PATH está resolvendo pro WSL em vez do Git Bash — use o `dev-up.ps1` ou
 > chame o Git Bash explicitamente: `& "C:\Program Files\Git\bin\bash.exe" ./dev-up.sh`.

@@ -5,19 +5,30 @@ const { Op } = require('sequelize');
 const { Fornecedor, CategoriaFornecedor } = require('../models');
 const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { saudacaoWhatsapp } = require('../utils/brand');
+const { contem } = require('../utils/escapeLike');
+const { garantirExistenciaNoTenant, erroFiltroUuid } = require('../utils/tenantFk');
 
 // GET /api/fornecedores
 async function listar(req, res, next) {
   try {
     const { page = 1, limit = 20, busca, categoriaId } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+
+    if (busca !== undefined && typeof busca !== 'string') {
+      return res.status(400).json({ success: false, message: 'Busca inválida.' });
+    }
+    const erroCategoria = erroFiltroUuid(categoriaId, 'Categoria');
+    if (erroCategoria) {
+      return res.status(400).json({ success: false, message: erroCategoria });
+    }
 
     const where = {};
     if (busca) {
       where[Op.or] = [
-        { nome:  { [Op.iLike]: `%${busca}%` } },
-        { email: { [Op.iLike]: `%${busca}%` } },
-        { cnpj:  { [Op.iLike]: `%${busca}%` } },
+        { nome:  { [Op.iLike]: contem(busca) } },
+        { email: { [Op.iLike]: contem(busca) } },
+        { cnpj:  { [Op.iLike]: contem(busca) } },
       ];
     }
     if (categoriaId) {
@@ -27,8 +38,8 @@ async function listar(req, res, next) {
     const { count, rows } = await Fornecedor.findAndCountAll({
       where,
       include: [{ model: CategoriaFornecedor, as: 'categoria', attributes: ['id', 'nome'] }],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: limitNum,
+      offset: (pageNum - 1) * limitNum,
       order: [['nome', 'ASC']],
     });
 
@@ -37,9 +48,9 @@ async function listar(req, res, next) {
       data: rows,
       pagination: {
         total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(count / limitNum),
       },
     });
   } catch (error) {
@@ -80,10 +91,7 @@ async function criar(req, res, next) {
       });
     }
 
-    const categoriaExiste = await CategoriaFornecedor.findOne({ where: { id: categoriaId } });
-    if (!categoriaExiste) {
-      return res.status(404).json({ success: false, message: 'Categoria não encontrada.' });
-    }
+    await garantirExistenciaNoTenant(CategoriaFornecedor, categoriaId, 'Categoria');
 
     const fornecedor = await Fornecedor.create({ nome, email, cnpj, telefone, categoriaId });
     const fornecedorCompleto = await Fornecedor.findOne({
@@ -114,12 +122,7 @@ async function atualizar(req, res, next) {
 
     const { nome, email, cnpj, telefone, categoriaId } = req.body;
 
-    if (categoriaId) {
-      const categoriaExiste = await CategoriaFornecedor.findOne({ where: { id: categoriaId } });
-      if (!categoriaExiste) {
-        return res.status(404).json({ success: false, message: 'Categoria não encontrada.' });
-      }
-    }
+    await garantirExistenciaNoTenant(CategoriaFornecedor, categoriaId, 'Categoria');
 
     await fornecedor.update({
       nome:        nome        || fornecedor.nome,

@@ -7,14 +7,14 @@ const { Convite, Evento } = require('../models');
 const { isValidUUID } = require('../utils/validators');
 const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { obterMarca } = require('../utils/brand');
+const { urlBaseFrontend } = require('../config/seguranca');
 
 const MAX_PESSOAS_POR_CONVITE = 50;
 
 const novoToken = () => crypto.randomBytes(16).toString('hex');
 
 function linkPublico(token) {
-  const base = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
-  return `${base}/api/convites/publico/${token}`;
+  return `${urlBaseFrontend()}/api/convites/publico/${token}`;
 }
 
 /** Valida nome/telefone/qtdPessoas; devolve { dados } ou { erro }. */
@@ -196,24 +196,45 @@ const escapar = (texto) => String(texto ?? '').replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[c]));
 
+// O link público deixa de valer 1 dia depois do término do evento.
+const MARGEM_POS_EVENTO_MS = 24 * 60 * 60 * 1000;
+
+function conviteExpirou(convite, agora = Date.now()) {
+  const fim = new Date(convite.evento?.horarioTermino || convite.evento?.dataEvento).getTime();
+  // Sem data válida, falha fechado.
+  return Number.isNaN(fim) || agora > fim + MARGEM_POS_EVENTO_MS;
+}
+
+/** Cabeçalhos das rotas públicas: o token na URL não pode ir para cache nem para Referer. */
+function protegerRespostaPublica(res) {
+  res.set('Cache-Control', 'no-store');
+  res.set('Referrer-Policy', 'no-referrer');
+}
+
+/**
+ * Convite do link público. Inexistente, removido (soft delete = revogado) e expirado
+ * são indistinguíveis: o mesmo 404 genérico.
+ */
 async function conviteDoToken(token) {
   if (!/^[a-f0-9]{32}$/.test(String(token))) return null;
-  return Convite.findOne({
+  const convite = await Convite.findOne({
     where: { token },
-    include: [{ model: Evento, as: 'evento', attributes: ['nome', 'dataEvento'] }],
+    include: [{ model: Evento, as: 'evento', attributes: ['nome', 'dataEvento', 'horarioTermino'] }],
     ignoraTenant: true,
   });
+  if (!convite || conviteExpirou(convite)) return null;
+  return convite;
 }
 
 // GET /api/convites/publico/:token/qrcode.png (público)
 async function qrcodePng(req, res, next) {
   try {
+    protegerRespostaPublica(res);
     const convite = await conviteDoToken(req.params.token);
     if (!convite) return res.status(404).send('Convite não encontrado.');
 
     const png = await QRCode.toBuffer(convite.token, { width: 480, margin: 2 });
     res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'private, max-age=3600');
     return res.send(png);
   } catch (error) {
     return next(error);
@@ -223,6 +244,7 @@ async function qrcodePng(req, res, next) {
 // GET /api/convites/publico/:token (público) — página que o convidado abre
 async function paginaPublica(req, res, next) {
   try {
+    protegerRespostaPublica(res);
     const convite = await conviteDoToken(req.params.token);
     if (!convite) return res.status(404).send('Convite não encontrado.');
 

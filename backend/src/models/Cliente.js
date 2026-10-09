@@ -56,6 +56,12 @@ const Cliente = sequelize.define('Cliente', {
     defaultValue: DataTypes.NOW,
     field: 'cli_atualizado_em',
   },
+  // LGPD: preenchido quando os dados pessoais do titular foram anonimizados.
+  anonimizadoEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'cli_anonimizado_em',
+  },
   deletadoEm: {
     type: DataTypes.DATE,
     allowNull: true,

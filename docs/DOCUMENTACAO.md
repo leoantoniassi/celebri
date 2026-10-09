@@ -34,7 +34,7 @@ O sistema segue uma arquitetura **cliente-servidor** em três camadas, totalment
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐  │
 │  │   Frontend   │   │   Backend    │   │  PostgreSQL  │  │
 │  │  React+Nginx │──▶│ Node+Express │──▶│     15       │  │
-│  │   Porta 80   │   │  Porta 3001  │   │  Porta 5432  │  │
+│  │  Porta 8080  │   │  Porta 3001  │   │  Porta 5432  │  │
 │  └──────────────┘   └──────────────┘   └──────────────┘  │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
@@ -42,7 +42,7 @@ O sistema segue uma arquitetura **cliente-servidor** em três camadas, totalment
 
 ### 2.1 Fluxo de Comunicação
 
-1. O **usuário** acessa o frontend via navegador (porta 80)
+1. O **usuário** acessa o frontend via navegador (porta 8080 do host)
 2. O **Nginx** serve os arquivos estáticos do React (SPA)
 3. Requisições para `/api/*` são redirecionadas via **proxy reverso** ao backend (porta 3001)
 4. O **backend** processa a lógica de negócio e consulta o **PostgreSQL** via Sequelize ORM
@@ -108,7 +108,7 @@ projeto-mais_alegria/
 │
 ├── backend/
 │   ├── .env                      # Variáveis do backend (JWT, DB)
-│   ├── Dockerfile                # Imagem Node.js 18-alpine
+│   ├── Dockerfile                # Imagem Node.js 22-alpine
 │   ├── package.json
 │   ├── uploads/                  # Armazena documentos enviados
 │   └── src/
@@ -456,15 +456,20 @@ cd projeto-mais_alegria
 docker compose up -d --build
 
 # 3. Acessar a aplicação
-# Frontend: http://localhost
-# API:      http://localhost:3001/api/health
+# Frontend: http://localhost:8080  (porta do host configurável por WEB_PORT)
+# API:      somente via proxy do frontend: http://localhost:8080/api/health
 ```
+
+Em produção o compose **não publica** Postgres nem API no host; só o nginx do frontend (8080).
+Para desenvolvimento (Postgres e API em `127.0.0.1`), use o override:
+`docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
+(o `dev-up.sh`/`dev-up.ps1` já fazem isso via `COMPOSE_FILE`).
 
 ### 11.3 Sem Docker (Desenvolvimento)
 
 ```bash
 # 1. Banco de dados — instalar PostgreSQL 15 e criar o banco
-psql -U postgres -c "CREATE USER mais_alegria WITH PASSWORD 'mais_alegria_2026';"
+psql -U postgres -c "CREATE USER mais_alegria WITH PASSWORD '<defina-uma-senha-forte>';"
 psql -U postgres -c "CREATE DATABASE projeto_mais_alegria OWNER mais_alegria;"
 psql -U mais_alegria -d projeto_mais_alegria -f database/init.sql
 psql -U mais_alegria -d projeto_mais_alegria -f database/seed.sql
@@ -488,15 +493,21 @@ npm run dev    # Roda na porta 5173 com proxy para 3001
 | `DB_HOST` | localhost | Host do PostgreSQL |
 | `DB_PORT` | 5432 | Porta do PostgreSQL |
 | `DB_USER` | mais_alegria | Usuário do banco |
-| `DB_PASS` | mais_alegria_2026 | Senha do banco |
+| `DB_PASS` | `<defina-uma-senha-forte>` | Senha do banco (obrigatória; nunca versionar) |
 | `DB_NAME` | projeto_mais_alegria | Nome do banco |
 
 **Backend (`backend/.env`)**:
 | Variável | Valor Padrão | Descrição |
 |---|---|---|
 | `PORT` | 3001 | Porta da API |
-| `JWT_SECRET` | mais_alegria_jwt_secret_2026 | Chave secreta JWT |
-| `JWT_EXPIRES_IN` | 24h | Tempo de expiração do token |
+| `JWT_SECRET` | `<defina-um-segredo-forte>` | Chave secreta JWT (mín. 32 caracteres; gere com `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
+| `JWT_EXPIRES_IN` | 8h | Tempo de expiração do token |
+
+#### Migrations e ordem de aplicação
+
+As migrations (`database/migrations/*.sql`) rodam por `npm run migrate` e automaticamente ao subir a API (se uma falhar, a API aborta com exit 1). A ordem é a **lexicográfica do nome completo** do arquivo. Existem dois pares com o mesmo prefixo (`006_expand_logo_url` / `006_usuario_funcionario_link` e `008_codigo_primeiro_acesso` / `008_update_empresa_celebri`); eles **não foram renomeados** porque o nome fica gravado em `schema_migrations` e renomear reaplicaria migrations em bases existentes. Novas migrations devem usar prefixos únicos e crescentes (`013_`...). Teste: `backend/src/__tests__/migrateOrdem.test.js`.
+
+Variáveis do banco em produção: `DB_SSL`, `DB_SSL_CA` e `DB_SSL_REJECT_UNAUTHORIZED` (ver `.env.example`). Pendências para publicar: `docs/CHECKLIST_PRE_PUBLICACAO.md`.
 
 ### 11.5 Usuários de Teste (seed)
 
@@ -530,9 +541,14 @@ O middleware `errorHandler.js` trata globalmente:
 
 | Serviço | Container | Imagem Base | Porta |
 |---|---|---|---|
-| `db` | mais_alegria_db | postgres:15-alpine | 5432 |
-| `backend` | mais_alegria_api | node:18-alpine | 3001 |
-| `frontend` | mais_alegria_web | nginx:alpine (multi-stage) | 80 |
+| `db` | celebri_db | postgres:15-alpine | 5432 (interna; dev: 127.0.0.1) |
+| `backend` | celebri_api | node:22-alpine (usuário `node`) | 3001 (interna; dev: 127.0.0.1) |
+| `frontend` | celebri_web | nginxinc/nginx-unprivileged:stable-alpine (multi-stage) | 8080 (publicada) |
+
+Hardening: rede interna `backend`, `restart: unless-stopped`, healthchecks (`depends_on: service_healthy`),
+`no-new-privileges`, `cap_drop: [ALL]` e `read_only` + tmpfs `/tmp` (backend e frontend; o Postgres precisa
+das capabilities padrão), `./docs` e `./database` montados `:ro`. CI e análise de segurança em `.github/`
+(`ci.yml`, `codeql.yml`, `dependabot.yml`); política de divulgação em `SECURITY.md`.
 
 ### 13.2 Volumes Persistentes
 
@@ -544,7 +560,7 @@ O middleware `errorHandler.js` trata globalmente:
 ### 13.3 Frontend — Build Multi-Stage
 
 1. **Stage 1 (build)**: Node 22-alpine — `npm ci` + `npm run build`
-2. **Stage 2 (produção)**: Nginx Alpine — copia `/app/dist` + `nginx.conf`
+2. **Stage 2 (produção)**: nginx-unprivileged (sem root, porta 8080) — copia `/app/dist` + `nginx.conf`
 
 ---
 
@@ -558,6 +574,28 @@ O middleware `errorHandler.js` trata globalmente:
 | Autorização | Middleware roles | Restrição por perfil de usuário |
 | Upload seguro | Multer | Filtro de tipo + limite de 10MB |
 | Soft Delete | Campo deletado_em | Dados nunca são removidos fisicamente |
+
+### 14.1 Cabeçalhos HTTP, CORS e CSP
+
+- **CORS**: só as origens de `FRONTEND_URL` (lista separada por vírgula). Sem fallback `*`; em produção a API **não sobe** sem `FRONTEND_URL`.
+- **API (helmet)**: CSP `default-src 'none'; frame-ancestors 'none'` (a página pública do convite acrescenta apenas estilo inline e imagem `data:`), `nosniff`, `Referrer-Policy: no-referrer`.
+- **SPA (`frontend/nginx.conf` e `frontend/vercel.json`, cabeçalhos idênticos)**: CSP `default-src 'self'; script-src 'self'` (sem script inline: o anti-FOUC está em `public/tema-inicial.js`), `style-src 'self' 'unsafe-inline'` + Google Fonts (necessário pelos estilos inline do React/Tailwind), `font-src` Google Fonts, `img-src 'self' data: blob: https:`, `connect-src 'self' https://viacep.com.br`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`; mais `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` e `Permissions-Policy` (câmera só da própria origem, para o leitor de QR). Como o JWT fica em `localStorage`, a CSP é a principal mitigação de XSS.
+- **API em outra origem** (`VITE_API_URL`, ex.: Vercel + API separada): acrescente a origem ao `connect-src` em **nginx.conf e vercel.json** e use essa origem em `FRONTEND_URL` do backend.
+- **nginx**: `server_tokens off`, dotfiles bloqueados (exceto `/.well-known/`), `index.html` com `no-cache`, `/assets/` imutável. `add_header` não é herdado entre `location`: os cabeçalhos são repetidos em cada bloco. Atrás de 1 nginx, defina `TRUST_PROXY=1` no backend (IP real no rate limit).
+- **HTTPS/HSTS**: o container nginx não termina TLS e não envia HSTS; há um bloco comentado em `nginx.conf` para ativar na publicação. O `vercel.json` já envia `Strict-Transport-Security`.
+- **Convite público** (`/api/convites/publico/:token` e `qrcode.png`): o link expira 1 dia após o término do evento e deixa de funcionar quando o convite é removido (`DELETE /api/convites/:id`, soft delete); em ambos os casos responde 404 genérico. Respostas com `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
+- **Catálogos**: `urlExterna` aceita apenas `http://` ou `https://` (400 caso contrário).
+
+### 14.2 LGPD (privacidade e proteção de dados)
+
+Documentos (modelos, **precisam de revisão jurídica**) em [`docs/lgpd/`](lgpd/README.md): política de privacidade, termo de uso e consentimento, retenção, resposta a incidentes, backup e registro de tratamento.
+
+- **Auditoria** (migration `013`): tabela `auditoria` com login ok/falha, bloqueio de conta, troca/redefinição de senha, criação/remoção/mudança de papel e convite de usuário, acesso a documento (`GET /documentos/:id/arquivo`), exportação/anonimização de titular e suspensão de empresa. `detalhes` nunca recebe e-mail, CPF, telefone, nome, token ou senha (`services/auditoriaService.js` sanitiza; `registrar` nunca lança).
+- **Direitos do titular** (gerente, `/api/lgpd`): `GET /titulares/:tipo/:id/exportar` (JSON em anexo) e `POST /titulares/:tipo/:id/anonimizar` com `{"confirmacao": true}`; `tipo` = `cliente`, `funcionario`, `convidado` ou `fornecedor`. A anonimização é transacional e irreversível, preserva dados financeiros/fiscais e responde 409 se houver evento futuro ou em andamento (ou, para funcionário, conta de gerente).
+- **Retenção**: `npm run purge:retencao` (simulação) / `-- --executar`, em `backend/`; `RETENCAO_DIAS` (padrão 1825) e `RETENCAO_CONVITES_DIAS` (padrão 180). Não roda sozinho.
+- **Aceite de termos**: `POST /usuarios/definir-senha` exige `aceiteTermos: true` (400 sem ele) e grava `usr_termos_aceitos_em`/`usr_termos_versao` (`TERMOS_VERSAO`, padrão `1.0`). `POST /auth/primeiro-acesso/confirmar` (app mobile) não exige, mas grava se vier `true`. Página pública `/privacidade`.
+- **Backup**: `scripts/backup.sh`, `scripts/restore.sh`, `scripts/verificar-backup.sh` (ver `docs/lgpd/politica-de-backup.md`).
+- **Limitação**: colunas sensíveis (CPF/telefone) **não** são criptografadas em repouso nesta versão (backlog).
 
 ---
 

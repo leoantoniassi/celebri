@@ -1,3 +1,7 @@
+-- !!! REMOVER ANTES DE PUBLICAR: contas e senha de teste (123456). Ver docs/CHECKLIST_PRE_PUBLICACAO.md !!!
+-- Paridade de schema: este script cobre a base legada + usr_token_version (migr. 012).
+-- Migrations 004-011 (empresas/multi-tenant, escala mobile, portaria, garcom/cozinha) dependem de
+-- empresas e sao aplicadas por 'npm run migrate' (tambem automatico ao subir a API).
 -- ============================================================
 -- PROJETO MAIS ALEGRIA - DDL (PostgreSQL)
 -- Script de inicialização para Docker
@@ -40,6 +44,7 @@ CREATE TABLE usuarios (
     usr_convite_expiracao TIMESTAMP,
     usr_reset_token       VARCHAR(255),
     usr_reset_expiracao   TIMESTAMP,
+    usr_token_version     INTEGER      NOT NULL DEFAULT 0,
     usr_criado_em         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_usuarios_role CHECK (usr_role IN ('gerente', 'operador')),
     CONSTRAINT ck_usuarios_status CHECK (usr_status IN ('pendente', 'ativo'))
@@ -48,6 +53,7 @@ CREATE TABLE usuarios (
 CREATE INDEX idx_usuarios_convite_token ON usuarios(usr_convite_token);
 CREATE INDEX idx_usuarios_reset_token ON usuarios(usr_reset_token) WHERE usr_reset_token IS NOT NULL;
 
+COMMENT ON COLUMN usuarios.usr_token_version IS 'Versao do JWT; incrementar revoga as sessoes abertas (migration 012).';
 COMMENT ON TABLE  usuarios          IS 'Usuários do sistema com controle de acesso por role.';
 COMMENT ON COLUMN usuarios.usr_role IS 'Papel no sistema: gerente ou operador.';
 COMMENT ON COLUMN usuarios.usr_status IS 'Status da conta: pendente ou ativo.';
@@ -467,6 +473,30 @@ CREATE INDEX idx_escala_funcionario          ON escala                (esc_fun_i
 -- Evento_produto / Orcamento_produto
 CREATE INDEX idx_evento_produto_evento       ON evento_produto        (evp_evt_id);
 CREATE INDEX idx_orcamento_produto_orc       ON orcamento_produto     (orp_orc_id);
+
+-- ============================================================
+-- LGPD (migration 013): auditoria, anonimização e aceite de termos
+-- (convites.cnv_anonimizado_em e o restante do multi-tenant vêm das migrations)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS auditoria (
+    aud_id          UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+    aud_emp_id      UUID,
+    aud_usr_id      UUID,
+    aud_acao        VARCHAR(80)  NOT NULL,
+    aud_entidade    VARCHAR(60),
+    aud_entidade_id UUID,
+    aud_ip          VARCHAR(64),
+    aud_detalhes    JSONB,
+    aud_criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_emp_criado ON auditoria (aud_emp_id, aud_criado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_entidade   ON auditoria (aud_entidade, aud_entidade_id);
+
+ALTER TABLE clientes     ADD COLUMN IF NOT EXISTS cli_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS fun_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS for_anonimizado_em TIMESTAMPTZ;
+ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_aceitos_em TIMESTAMPTZ;
+ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_versao VARCHAR(20);
 
 -- ============================================================
 -- INSER��O DO USU�RIO INICIAL (GERENTE)

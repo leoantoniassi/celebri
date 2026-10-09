@@ -1,5 +1,10 @@
-const { Orcamento, Cliente, Local, OrcamentoProduto, Produto } = require('./src/models');
-const sequelize = require('./src/config/database');
+if (process.env.NODE_ENV === 'production') {
+  console.error('Recusado: script de desenvolvimento, não use com NODE_ENV=production.');
+  process.exit(1);
+}
+
+const { Orcamento, Cliente, Local, OrcamentoProduto, Produto } = require('../../src/models');
+const sequelize = require('../../src/config/database');
 
 const includesOrcamentoDetalhado = [
   { model: Cliente, as: "cliente", attributes: ["id", "nome"] },
@@ -18,8 +23,8 @@ async function test() {
       console.log('No budget found to reload');
     }
   } catch (err) {
-    console.error('ERROR STACK:');
-    console.error(err);
+    console.error('Erro:', err.name, err.message);
+    process.exitCode = 1;
   } finally {
     await sequelize.close();
   }

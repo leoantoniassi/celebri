@@ -33,7 +33,9 @@ api.interceptors.response.use(
       const isLoginRequest = error.config?.url?.includes('/auth/login');
 
       if (!isLoginRequest) {
-        const isNaoAutorizado = status === 401 || status === 403;
+        // Só 401 (sessão inválida/expirada/revogada) derruba a sessão.
+        // 403 é falta de permissão: a sessão continua válida.
+        const isNaoAutorizado = status === 401;
         const isEmpresaNaoEncontrada =
           status === 404 && data?.message?.includes('Empresa não encontrada');
 

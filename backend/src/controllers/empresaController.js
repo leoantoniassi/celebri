@@ -5,12 +5,15 @@
 // cria-se a empresa e o primeiro usuário gerente, que recebe convite por
 // e-mail para definir a própria senha.
 // ============================================================
-const crypto = require('crypto');
 const { Empresa, Usuario } = require('../models');
 const { success, fail } = require('../utils/response');
 const { semEscopo } = require('../utils/tenantContext');
 const { enviarConvite } = require('../services/emailService');
+const { gerarToken, hashToken } = require('../utils/tokens');
+const { VALIDADE } = require('../config/seguranca');
+const sequelize = require('../config/database');
 const { invalidarCache: invalidarMarca } = require('../utils/brand');
+const auditoria = require('../services/auditoriaService');
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/;
@@ -86,7 +89,7 @@ async function criar(req, res, next) {
       .findOne({ where: { slug: slugNormalizado } });
     if (jaExiste) return fail(res, 'Já existe uma empresa com este código.', 409);
 
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = gerarToken();
 
     // semEscopo: a criação atravessa dois tenants (nenhum, e o recém-criado),
     // então não pode passar pelo filtro automático.
@@ -110,8 +113,8 @@ async function criar(req, res, next) {
         role: 'gerente',
         status: 'pendente',
         empresaId: empresa.id,
-        conviteToken: token,
-        conviteExpiracao: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        conviteToken: hashToken(token), // o e-mail leva o token cru
+        conviteExpiracao: new Date(Date.now() + VALIDADE.conviteMs),
       });
 
       return { empresa, usuario };
@@ -192,6 +195,19 @@ async function mudarStatus(req, res, next) {
 
     await empresa.update({ status, atualizadoEm: new Date() });
     invalidarMarca(empresa.id);
+
+    // Suspender/cancelar derruba as sessões abertas dos usuários da empresa.
+    if (status !== 'ativo') {
+      await Usuario.update(
+        { tokenVersion: sequelize.literal('usr_token_version + 1') },
+        { where: { empresaId: empresa.id }, ignoraTenant: true }
+      );
+    }
+
+    await auditoria.registrar({
+      req, empresaId: empresa.id, acao: status === 'ativo' ? 'empresa.reativada' : 'empresa.suspensa',
+      entidade: 'empresa', entidadeId: empresa.id, detalhes: { status },
+    });
 
     return success(res, serializar(empresa), `Empresa marcada como ${status}.`);
   } catch (error) {

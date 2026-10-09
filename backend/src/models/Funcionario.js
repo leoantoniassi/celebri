@@ -56,6 +56,12 @@ const Funcionario = sequelize.define('Funcionario', {
     defaultValue: DataTypes.NOW,
     field: 'fun_atualizado_em',
   },
+  // LGPD: preenchido quando os dados pessoais do titular foram anonimizados.
+  anonimizadoEm: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'fun_anonimizado_em',
+  },
   deletadoEm: {
     type: DataTypes.DATE,
     allowNull: true,
