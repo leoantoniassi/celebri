@@ -106,7 +106,9 @@ export default function DashboardCharts() {
               <Tooltip
                 formatter={(value) => [`${value} eventos`, 'Quantidade']}
                 cursor={{ fill: cores['outline-variant'], fillOpacity: 0.25 }}
-                contentStyle={estiloTooltip}
+                contentStyle={{ ...estiloTooltip, color: '#ffffff' }}
+                itemStyle={{ color: '#ffffff' }}
+                labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
               />
               {/* As cores das barras alternam dinamicamente respeitando a paleta do tema configurado */}
               <Bar dataKey="value" name="Quantidade" radius={[4, 4, 0, 0]} maxBarSize={45}>
