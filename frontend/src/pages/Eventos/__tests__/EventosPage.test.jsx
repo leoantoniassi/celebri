@@ -113,12 +113,28 @@ describe('EventosPage — warning de capacidade excedida', () => {
     const [localSelect] = document.querySelectorAll('#evt-form select');
     await user.selectOptions(localSelect, '1');
 
-    // Pega o 2o input[type=number] (Total / qtdPessoas)
-    const [, totalInput] = document.querySelectorAll('#evt-form input[type="number"]');
-    await user.clear(totalInput);
-    await user.type(totalInput, '150');
+    // Pega o 3o input[type=number] (Adultos; o 2o, Total, é readOnly)
+    const [, , adultosInput] = document.querySelectorAll('#evt-form input[type="number"]');
+    await user.clear(adultosInput);
+    await user.type(adultosInput, '150');
 
     expect(await screen.findByText('Capacidade excedida!')).toBeInTheDocument();
+  });
+
+  test('campo Total é readOnly e reflete a soma de Adultos, Crianças e Bebês', async () => {
+    const user = userEvent.setup();
+    render(<EventosPage />);
+    await abrirFormulario(user);
+
+    const [, totalInput, adultosInput, criancasInput, bebesInput] =
+      document.querySelectorAll('#evt-form input[type="number"]');
+    expect(totalInput).toHaveAttribute('readonly');
+
+    await user.type(adultosInput, '10');
+    await user.type(criancasInput, '5');
+    await user.type(bebesInput, '2');
+
+    expect(totalInput).toHaveValue(17);
   });
 
   test('NÃO deve exibir warning quando qtdPessoas está dentro da capacidade', async () => {
@@ -129,9 +145,9 @@ describe('EventosPage — warning de capacidade excedida', () => {
     const [localSelect] = document.querySelectorAll('#evt-form select');
     await user.selectOptions(localSelect, '1');
 
-    const [, totalInput] = document.querySelectorAll('#evt-form input[type="number"]');
-    await user.clear(totalInput);
-    await user.type(totalInput, '80');
+    const [, , adultosInput] = document.querySelectorAll('#evt-form input[type="number"]');
+    await user.clear(adultosInput);
+    await user.type(adultosInput, '80');
 
     await waitFor(() => {
       expect(screen.queryByText('Capacidade excedida!')).not.toBeInTheDocument();
@@ -146,9 +162,9 @@ describe('EventosPage — warning de capacidade excedida', () => {
     const [localSelect] = document.querySelectorAll('#evt-form select');
     await user.selectOptions(localSelect, '2');
 
-    const [, totalInput] = document.querySelectorAll('#evt-form input[type="number"]');
-    await user.clear(totalInput);
-    await user.type(totalInput, '150');
+    const [, , adultosInput] = document.querySelectorAll('#evt-form input[type="number"]');
+    await user.clear(adultosInput);
+    await user.type(adultosInput, '150');
 
     await waitFor(() => {
       expect(screen.queryByText('Capacidade excedida!')).not.toBeInTheDocument();
