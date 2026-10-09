@@ -126,7 +126,8 @@ describe('DocumentosPage — handleAbrir', () => {
 
   describe('quando API retorna erro no caminho local', () => {
     test('exibe alerta de erro', async () => {
-      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+      const confirmMock = jest.fn().mockResolvedValue(true);
+      useConfirm.mockReturnValue(confirmMock);
       api.get.mockImplementation((url, config) => {
         if (url === '/documentos') {
           return Promise.resolve({ data: { data: [docLocal] } });
@@ -149,12 +150,11 @@ describe('DocumentosPage — handleAbrir', () => {
       await userEvent.click(btn);
 
       await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith(
+        expect(confirmMock).toHaveBeenCalledWith(
           'Erro ao abrir o arquivo. Verifique se o caminho está acessível pelo servidor.',
+          expect.objectContaining({ title: 'Erro', showCancel: false }),
         );
       });
-
-      alertSpy.mockRestore();
     });
   });
 });
