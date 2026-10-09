@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Celebri">
+  <title>Celebri — logo badge estrela</title>
+  <defs>
+    <linearGradient id="cbBadgeStarGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1CEAFF"/>
+      <stop offset="1" stop-color="#FF45FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#0E1A3A"/>
+  <path d="M43 22a13 13 0 1 0 0 20" fill="none" stroke="url(#cbBadgeStarGrad)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M46 25l1.7 4.1 4.1 1.7-4.1 1.7L46 36.6l-1.7-4.1-4.1-1.7 4.1-1.7z" fill="#FF45FF"/>
+</svg>

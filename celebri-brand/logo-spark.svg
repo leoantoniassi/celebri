@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Celebri">
+  <title>Celebri — logo spark</title>
+  <defs>
+    <linearGradient id="cbSparkGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1CEAFF"/>
+      <stop offset="1" stop-color="#FF45FF"/>
+    </linearGradient>
+  </defs>
+  <path d="M45 16A20 20 0 1 0 45 48" fill="none" stroke="url(#cbSparkGrad)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M47 23l2.1 5 5 2.1-5 2.1-2.1 5-2.1-5-5-2.1 5-2.1z" fill="#FF45FF"/>
+</svg>

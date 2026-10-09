@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celebri — prévia das logos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #16254F;
+      --navy-deep: #0E1A3A;
+      --cyan: #1CEAFF;
+      --magenta: #FF45FF;
+      --light: #FBFBF8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Nunito Sans', system-ui, sans-serif;
+      background: var(--navy-deep);
+      color: #F4F6FB;
+      padding: 56px 24px 80px;
+    }
+    header { max-width: 1080px; margin: 0 auto 48px; }
+    h1 {
+      font-family: 'Rubik', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .sub { color: #C9D3EA; margin: 0; }
+    .tag {
+      display: inline-block;
+      margin-top: 18px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+    .grid {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 22px;
+    }
+    .card {
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .card__tiles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .tile {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+    }
+    .tile--light { background: var(--light); }
+    .tile--dark { background: #0B142E; }
+    .tile img { width: 100%; max-width: 108px; height: auto; }
+    .card__meta {
+      padding: 16px 18px 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .card__meta strong {
+      display: block;
+      font-family: 'Rubik', sans-serif;
+      font-size: 1.02rem;
+    }
+    .card__meta code {
+      font-size: 0.78rem;
+      color: var(--cyan);
+      word-break: break-all;
+    }
+    .card__meta p { margin: 6px 0 0; font-size: 0.88rem; color: #C9D3EA; }
+
+    .sizes {
+      max-width: 1080px;
+      margin: 56px auto 0;
+      padding: 28px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .sizes h2 { font-family: 'Rubik', sans-serif; margin: 0 0 20px; font-size: 1.2rem; }
+    .sizes__row { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; }
+    .size-item { text-align: center; }
+    .size-item span { display: block; margin-top: 8px; font-size: 0.78rem; color: #C9D3EA; }
+    .size-item img { background: var(--light); border-radius: 22%; }
+
+    .palette { max-width: 1080px; margin: 40px auto 0; display: flex; gap: 16px; flex-wrap: wrap; }
+    .swatch { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: #C9D3EA; }
+    .swatch i { width: 34px; height: 34px; border-radius: 10px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Celebri — prévia das logos</h1>
+    <p class="sub">Todas as opções em fundo claro e escuro. Escolha a sua favorita.</p>
+    <span class="tag">Ciano #1CEAFF · Magenta #FF45FF</span>
+  </header>
+
+  <main class="grid">
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-badge.svg" alt="Logo badge" /></div>
+        <div class="tile tile--dark"><img src="logo-badge.svg" alt="Logo badge" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>1. Badge</strong>
+        <code>logo-badge.svg</code>
+        <p>Principal: badge navy, "C" em gradiente e ponto de confete.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-spark.svg" alt="Logo spark" /></div>
+        <div class="tile tile--dark"><img src="logo-spark.svg" alt="Logo spark" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>2. Spark</strong>
+        <code>logo-spark.svg</code>
+        <p>Minimalista, sem fundo: "C" em gradiente com estrela.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-tile.svg" alt="Logo tile" /></div>
+        <div class="tile tile--dark"><img src="logo-tile.svg" alt="Logo tile" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>3. Tile</strong>
+        <code>logo-tile.svg</code>
+        <p>Estilo ícone de app: tile em gradiente com "C" vazado.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-confetti.svg" alt="Logo confete" /></div>
+        <div class="tile tile--dark"><img src="logo-confetti.svg" alt="Logo confete" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>4. Confete</strong>
+        <code>logo-confetti.svg</code>
+        <p>Badge navy com "C" e confetes — clima de festa.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-duo.svg" alt="Logo duo" /></div>
+        <div class="tile tile--dark"><img src="logo-duo.svg" alt="Logo duo" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>5. Duo</strong>
+        <code>logo-duo.svg</code>
+        <p>Dois traços sobrepostos (ciano + magenta) formando o "C".</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-badge-star.svg" alt="Logo badge estrela" /></div>
+        <div class="tile tile--dark"><img src="logo-badge-star.svg" alt="Logo badge estrela" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>6. Badge estrela</strong>
+        <code>logo-badge-star.svg</code>
+        <p>Variação do badge com estrela de celebração no vão do "C".</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-tile-star.svg" alt="Logo tile estrela" /></div>
+        <div class="tile tile--dark"><img src="logo-tile-star.svg" alt="Logo tile estrela" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>7. Tile estrela</strong>
+        <code>logo-tile-star.svg</code>
+        <p>Tile em gradiente com "C" e estrela vazados em navy.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-mono-dark.svg" alt="Logo mono escura" /></div>
+        <div class="tile tile--dark"><img src="logo-mono-light.svg" alt="Logo mono clara" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>8. Monocromática</strong>
+        <code>logo-mono-dark.svg · logo-mono-light.svg</code>
+        <p>Uma cor só, para fundos claro e escuro.</p>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__tiles">
+        <div class="tile tile--light"><img src="logo-spark-solid.svg" alt="Logo spark sólido" /></div>
+        <div class="tile tile--dark"><img src="logo-spark-solid.svg" alt="Logo spark sólido" /></div>
+      </div>
+      <div class="card__meta">
+        <strong>9. Spark sólido</strong>
+        <code>logo-spark-solid.svg</code>
+        <p>Versão sem gradiente: "C" ciano com estrela magenta.</p>
+      </div>
+    </article>
+  </main>
+
+  <section class="sizes">
+    <h2>Favicon / tamanhos pequenos</h2>
+    <div class="sizes__row">
+      <div class="size-item"><img src="favicon.svg" width="16" height="16" alt="" /><span>16px</span></div>
+      <div class="size-item"><img src="favicon.svg" width="32" height="32" alt="" /><span>32px</span></div>
+      <div class="size-item"><img src="favicon.svg" width="48" height="48" alt="" /><span>48px</span></div>
+      <div class="size-item"><img src="favicon.svg" width="64" height="64" alt="" /><span>64px</span></div>
+    </div>
+  </section>
+
+  <div class="palette">
+    <span class="swatch"><i style="background:#1CEAFF"></i> #1CEAFF — ciano</span>
+    <span class="swatch"><i style="background:#FF45FF"></i> #FF45FF — magenta</span>
+    <span class="swatch"><i style="background:#0E1A3A"></i> #0E1A3A — navy</span>
+    <span class="swatch"><i style="background:#16254F"></i> #16254F — azul-marinho</span>
+  </div>
+</body>
+</html>
