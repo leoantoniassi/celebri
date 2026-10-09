@@ -53,7 +53,10 @@ async function aplicar(client, arquivo) {
   await client.query('BEGIN');
   try {
     await client.query(sql);
-    await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [arquivo]);
+    await client.query(
+      'INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT (version) DO NOTHING',
+      [arquivo]
+    );
     await client.query('COMMIT');
     console.log(`  ✓ ${arquivo}`);
   } catch (erro) {

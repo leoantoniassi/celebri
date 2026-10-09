@@ -14,13 +14,6 @@ async function start() {
     await sequelize.authenticate();
     console.log('✅ Conexão com o PostgreSQL estabelecida com sucesso!');
 
-    // Aplica migrations pendentes automaticamente
-    try {
-      const { rodarMigrations } = require('../scripts/migrate');
-      await rodarMigrations();
-    } catch (migError) {
-      console.warn('⚠️ Alerta ao verificar migrations:', migError.message);
-    }
 
     // Importa modelos e associações (registra tudo no Sequelize)
     require('./models');
