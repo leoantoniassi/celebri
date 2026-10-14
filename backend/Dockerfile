@@ -1,6 +1,6 @@
 # Imagem pinada por versão menor. Para builds reprodutíveis em produção, fixe também
 # o digest:  FROM node:22-alpine@sha256:<digest>  (docker buildx imagetools inspect node:22-alpine)
-FROM node:22-alpine
+FROM node:26-alpine
 
 ENV NODE_ENV=production
 WORKDIR /app
