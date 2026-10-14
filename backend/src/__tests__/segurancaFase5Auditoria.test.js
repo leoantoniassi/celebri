@@ -46,7 +46,7 @@ describe('CORS adversarial', () => {
       .set('Access-Control-Request-Method', 'TRACE')
       .set('Access-Control-Request-Headers', 'X-Evil');
     expect(res.headers['access-control-allow-methods']).not.toMatch(/TRACE/);
-    expect(res.headers['access-control-allow-headers']).toBe('Content-Type,Authorization');
+    expect(res.headers['access-control-allow-headers']).toBe('Content-Type,Authorization,X-Tenant-Slug');
   });
 
   test('preflight de origem hostil não recebe Allow-Origin', async () => {

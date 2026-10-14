@@ -195,9 +195,7 @@ describe('Auditoria de segurança da Fase 7', () => {
   });
 
   test('dev-up exporta COMPOSE_FILE só no processo do script e não usa eval', () => {
-    const sh = ler('dev-up.sh');
-    expect(sh).not.toMatch(/\beval\b/);
-    expect(sh).toMatch(/export COMPOSE_FILE=/);
+    // dev-up.sh foi removido do repositório (commit 2a02e10); só o .ps1 permanece.
     expect(ler('dev-up.ps1')).not.toMatch(/Invoke-Expression|\biex\b/i);
   });
 
