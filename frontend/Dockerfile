@@ -1,6 +1,6 @@
 # Imagens pinadas por versão. Em produção, fixe também o digest (@sha256:...).
 # ---- Build Stage ----
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 
 WORKDIR /app
 
