@@ -4,13 +4,47 @@
 > `DB_PASS`/`JWT_SECRET` e rode o script de subida — sobe os containers,
 > aplica as migrations pendentes e roda o seed em um único passo.
 > - PowerShell (Windows): `.\dev-up.ps1`
-> - Bash (Mac/Linux, ou Git Bash no Windows): `./dev-up.sh`
 >
-> Os scripts usam `docker-compose.dev.yml` (Postgres/API só em `127.0.0.1`); o compose principal não publica esses serviços.
+> O script sobe o `docker-compose.yml` **junto com** o override
+> `docker-compose.dev.yml`. No compose principal não publica Postgres nem API;
+> o override de dev publica tudo em loopback (`127.0.0.1`).
 >
-> No Windows, se `bash ./dev-up.sh` der erro de WSL, é porque o `bash` do
-> PATH está resolvendo pro WSL em vez do Git Bash — use o `dev-up.ps1` ou
-> chame o Git Bash explicitamente: `& "C:\Program Files\Git\bin\bash.exe" ./dev-up.sh`.
+> | Serviço   | Dev (Vite + HMR)                                    | Produção (nginx)                        |
+> | :-------- | :-------------------------------------------------- | :-------------------------------------- |
+> | Frontend  | `http://localhost:8080` → container `5173` (Vite)  | `http://localhost:8080` → container `8080` |
+> | API       | `http://127.0.0.1:3001/api/health`                  | não publicada (só via proxy do nginx)   |
+> | Postgres  | `127.0.0.1:5432`                                    | não publicada                           |
+>
+> A porta do frontend no host é configurável por `WEB_PORT` (padrão `8080`).
+>
+> ⚠️ O override de dev usa a tag YAML `!override` (Docker Compose **>= 2.24**)
+> para **substituir** — e não somar — a lista de `ports` do compose principal.
+> Sem essa tag o Compose concatena as duas listas, o frontend fica com duas
+> bindings na mesma porta do host e a subida falha com
+> `Bind for 127.0.0.1:8080 failed: port is already allocated`.
+
+### Problemas comuns
+
+**O código de primeiro acesso não chega no app Celebri Staff.**
+O e-mail sai pela rota `POST /api/auth/primeiro-acesso/codigo`. As causas, em ordem de frequência:
+
+1. **SMTP não configurado.** O log da API mostra
+   `[Email] SMTP não configurado (EMAIL_HOST vazio)`. No dev, o serviço
+   **Mailpit** (definido no `docker-compose.dev.yml`) resolve: o e-mail é
+   capturado em `http://localhost:8025`. Em produção, defina `EMAIL_HOST`,
+   `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` e `EMAIL_FROM` no `.env` — a API
+   **não sobe** em `NODE_ENV=production` sem SMTP, porque sem ele o funcionário
+   nunca consegue criar a senha.
+2. **A flag de log não chega no container.** `DEV_LOG_CODIGO_ACESSO=true` só
+   funciona se a variável for encaminhada ao serviço `backend` no
+   `docker-compose.yml` e se `NODE_ENV` não for `production`. Com a flag
+   ligada, o código aparece em `docker compose logs backend`.
+3. **O SMTP está configurado mas falhou.** O log mostra
+   `[Email] Falha ao enviar código: <código>` (credenciais recusadas, porta
+   errada, provedor fora do ar). Para testar o caminho completo sem tocar no
+   app (roda na máquina, não no container):
+   `node backend/scripts/dev/test_email.js --enviar` — no dev ele usa o
+   Mailpit local (`127.0.0.1:1025`).
 
 ## 1. Introdução
 

@@ -69,6 +69,10 @@ services:
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
       EMAIL_FROM: ${EMAIL_FROM}
+      # Só desenvolvimento, sem SMTP: imprime o código de primeiro acesso no
+      # log da API. Precisa ser encaminhado para o container, senão a flag do
+      # .env nunca chega aqui. É ignorado quando NODE_ENV=production.
+      DEV_LOG_CODIGO_ACESSO: ${DEV_LOG_CODIGO_ACESSO:-false}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
       # Pasta base dos documentos locais (subpasta por empresa); fica no volume backend_uploads.
       DOCUMENTOS_DIR: ${DOCUMENTOS_DIR:-/app/uploads/documentos}

@@ -461,9 +461,17 @@ docker compose up -d --build
 ```
 
 Em produção o compose **não publica** Postgres nem API no host; só o nginx do frontend (8080).
-Para desenvolvimento (Postgres e API em `127.0.0.1`), use o override:
+Para desenvolvimento (Postgres, API e o frontend de dev em `127.0.0.1`), use o override:
 `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
-(o `dev-up.sh`/`dev-up.ps1` já fazem isso via `COMPOSE_FILE`).
+(o `dev-up.ps1` já faz isso via `COMPOSE_FILE`).
+
+No override de dev o frontend é o **Vite (HMR)**: a porta do host é a mesma
+(`${WEB_PORT:-8080}`, padrão `8080`), mas o container escuta em `5173` em vez de `8080`.
+Para que as listas de `ports` não sejam somadas no merge, o override usa a tag YAML
+`!override` (Docker Compose **>= 2.24**), que **substitui** a lista do compose principal.
+Sem ela o frontend receberia duas bindings na mesma porta do host
+(`8080:8080` do nginx e `127.0.0.1:8080:5173` do Vite) e a subida falharia com
+`port is already allocated`.
 
 ### 11.3 Sem Docker (Desenvolvimento)
 
@@ -543,7 +551,10 @@ O middleware `errorHandler.js` trata globalmente:
 |---|---|---|---|
 | `db` | celebri_db | postgres:15-alpine | 5432 (interna; dev: 127.0.0.1) |
 | `backend` | celebri_api | node:22-alpine (usuário `node`) | 3001 (interna; dev: 127.0.0.1) |
-| `frontend` | celebri_web | nginxinc/nginx-unprivileged:stable-alpine (multi-stage) | 8080 (publicada) |
+| `frontend` | celebri_web | nginxinc/nginx-unprivileged:stable-alpine (multi-stage) | prod: 8080 (publicada); dev: Vite na 5173, publicada em `127.0.0.1:${WEB_PORT:-8080}` |
+
+No override de dev cada serviço publica **uma única** binding no host (tag `!override`),
+sempre em loopback; o compose principal publica apenas a porta do frontend.
 
 Hardening: rede interna `backend`, `restart: unless-stopped`, healthchecks (`depends_on: service_healthy`),
 `no-new-privileges`, `cap_drop: [ALL]` e `read_only` + tmpfs `/tmp` (backend e frontend; o Postgres precisa

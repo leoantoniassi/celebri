@@ -9,6 +9,13 @@ const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const express = require('express');
 
+// Nodemailer mockado: assim dá para afirmar que o e-mail NÃO foi enviado
+// quando o SMTP não está configurado (e que é enviado quando está).
+jest.mock('nodemailer', () => {
+  const sendMail = jest.fn().mockResolvedValue({ messageId: 'teste' });
+  return { __sendMail: sendMail, createTransport: jest.fn(() => ({ sendMail })) };
+});
+
 jest.mock('../models', () => ({
   Usuario: { findOne: jest.fn(), findAll: jest.fn(), create: jest.fn() },
   Empresa: { findOne: jest.fn(), findAll: jest.fn() },
@@ -24,6 +31,7 @@ jest.mock('../services/emailService', () => ({
 
 const { Usuario, Empresa, Funcionario } = require('../models');
 const emailService = require('../services/emailService');
+const nodemailer = require('nodemailer');
 const { validarSenha } = require('../utils/validators');
 const { hashToken } = require('../utils/tokens');
 const { criarBloqueio } = require('../middleware/bloqueioConta');
@@ -561,5 +569,66 @@ describe('emailService não vaza dados pessoais nos logs', () => {
       expect(real.devLogCodigoAtivo({ NODE_ENV: 'production', DEV_LOG_CODIGO_ACESSO: 'true' })).toBe(false);
       expect(real.devLogCodigoAtivo({ NODE_ENV: 'development', DEV_LOG_CODIGO_ACESSO: 'true' })).toBe(true);
     });
+  });
+});
+
+describe('envio do código de primeiro acesso', () => {
+  const real = jest.requireActual('../services/emailService');
+  const envOriginal = { ...process.env };
+  let logs;
+
+  beforeEach(() => {
+    logs = [];
+    const captura = (...a) => logs.push(a.join(' '));
+    jest.spyOn(console, 'log').mockImplementation(captura);
+    jest.spyOn(console, 'warn').mockImplementation(captura);
+    jest.spyOn(console, 'error').mockImplementation(captura);
+  });
+
+  afterEach(() => {
+    process.env = { ...envOriginal };
+    jest.restoreAllMocks();
+  });
+
+  const enviar = () =>
+    real.enviarCodigoPrimeiroAcesso({ nome: 'Ana', email: 'ana@segredo.com', codigo: '987654', empresaId: 'emp-1' });
+
+  test('sem SMTP configurado nada é enviado e o motivo fica no log', async () => {
+    delete process.env.EMAIL_HOST;
+    process.env.NODE_ENV = 'development';
+    await enviar();
+    expect(nodemailer.createTransport).not.toHaveBeenCalled();
+    expect(nodemailer.__sendMail).not.toHaveBeenCalled();
+    expect(logs.join('\n')).toMatch(/SMTP não configurado/);
+  });
+
+  test('sem SMTP configurado o código não aparece no log (flag desligada)', async () => {
+    delete process.env.EMAIL_HOST;
+    process.env.NODE_ENV = 'development';
+    delete process.env.DEV_LOG_CODIGO_ACESSO;
+    await enviar();
+    expect(logs.join('\n')).not.toContain('987654');
+  });
+
+  test('em produção o código nunca é logado, mesmo com a flag ligada', async () => {
+    delete process.env.EMAIL_HOST;
+    process.env.NODE_ENV = 'production';
+    process.env.DEV_LOG_CODIGO_ACESSO = 'true';
+    await enviar();
+    expect(logs.join('\n')).not.toContain('987654');
+  });
+
+  test('com SMTP configurado o e-mail sai com o código dentro', async () => {
+    process.env.EMAIL_HOST = 'smtp.exemplo.com';
+    process.env.EMAIL_PORT = '587';
+    process.env.EMAIL_FROM = 'Celebri <nao-responda@celebri.local>';
+    process.env.NODE_ENV = 'development';
+    await enviar();
+    expect(nodemailer.createTransport).toHaveBeenCalled();
+    expect(nodemailer.__sendMail).toHaveBeenCalledTimes(1);
+    const enviado = nodemailer.__sendMail.mock.calls[0][0];
+    expect(enviado.html).toContain('987654');
+    expect(enviado.to).toBe('ana@segredo.com');
+    expect(enviado.from).toBe('Celebri <nao-responda@celebri.local>');
   });
 });

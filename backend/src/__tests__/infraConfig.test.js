@@ -5,7 +5,18 @@ const yaml = require('js-yaml');
 
 const raiz = path.resolve(__dirname, '../../..');
 const ler = (rel) => fs.readFileSync(path.join(raiz, rel), 'utf8');
-const carregarYaml = (rel) => (yaml.safeLoad ? yaml.safeLoad(ler(rel)) : yaml.load(ler(rel)));
+
+// O override de dev usa a tag YAML `!override` (Compose >= 2.24) para
+// SUBSTITUIR a lista de `ports` do compose base em vez de concatená-la
+// (concatenar publicaria a mesma porta do host duas vezes). O js-yaml
+// rejeita tags desconhecidas: registramos uma para ler o arquivo.
+const schemaCompose = yaml.Schema.create([
+  new yaml.Type('!override', { kind: 'sequence', construct: (d) => d }),
+]);
+const carregarYaml = (rel) => {
+  const opcoes = { schema: schemaCompose };
+  return yaml.safeLoad ? yaml.safeLoad(ler(rel), opcoes) : yaml.load(ler(rel), opcoes);
+};
 
 describe('docker-compose.yml', () => {
   const compose = carregarYaml('docker-compose.yml');
@@ -26,6 +37,23 @@ describe('docker-compose.yml', () => {
     [dev.services.db.ports, dev.services.backend.ports].forEach((ports) => {
       ports.forEach((p) => expect(String(p)).toMatch(/^127\.0\.0\.1:/));
     });
+  });
+
+  test('override de dev substitui (nao concatena) as portas do frontend', () => {
+    const dev = carregarYaml('docker-compose.dev.yml');
+    expect(dev.services.frontend.ports).toHaveLength(1);
+    expect(String(dev.services.frontend.ports[0])).toMatch(/^127\.0\.0\.1:/);
+    expect(String(dev.services.frontend.ports[0])).toMatch(/:5173$/);
+  });
+
+  test('todo `ports` do override de dev usa a tag !override (evita porta duplicada)', () => {
+    const texto = ler('docker-compose.dev.yml');
+    const dev = carregarYaml('docker-compose.dev.yml');
+    const comPortas = Object.keys(dev.services).filter((n) => dev.services[n].ports);
+    expect(comPortas.length).toBeGreaterThan(0);
+    // Uma tag por serviço que publica portas: sem ela o Compose concatena as
+    // listas e o frontend recebe duas bindings na mesma porta do host.
+    expect((texto.match(/ports: !override/g) || []).length).toBe(comPortas.length);
   });
 
   test('montagens de arquivos do host são somente leitura', () => {

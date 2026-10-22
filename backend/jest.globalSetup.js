@@ -7,6 +7,12 @@
 // uma vez, antes dos workers, e o process.env é herdado por eles.
 // ============================================================
 require('dotenv').config();
+// O .env do projeto vive na raiz do repo (celebri/.env), um nível acima do
+// backend: sem esta segunda leitura a sonda não acharia DB_USER/DB_PASS e a
+// suíte de integração seria pulada mesmo com o Postgres no ar. O dotenv não
+// sobrescreve variáveis já definidas, então no CI as variáveis do workflow
+// continuam prevalecendo.
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { Client } = require('pg');
 
 module.exports = async function sondarBanco() {

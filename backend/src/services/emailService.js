@@ -6,28 +6,14 @@
 // logo e cor do botão vêm da identidade visual do tenant. Antes o nome
 // "Mais Alegria" e as cores estavam fixos nos dois templates.
 // ============================================================
-const nodemailer = require('nodemailer');
 const { obterMarca } = require('../utils/brand');
 const { urlBaseFrontend } = require('../config/seguranca');
-
-/**
- * Cria um transporter Nodemailer a partir das variáveis de ambiente.
- * @returns {nodemailer.Transporter}
- */
-function criarTransporter() {
-  const port = Number(process.env.EMAIL_PORT) || 2525;
-
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: port,
-    secure: port === 465, // SSL apenas se for porta 465, senão TLS (2525/587)
-    connectionTimeout: 10000,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-}
+const {
+  criarTransporter,
+  devLogCodigoAtivo,
+  remetente,
+  smtpConfigurado,
+} = require('../config/email');
 
 /** Escapa texto vindo do banco antes de interpolar no HTML do e-mail. */
 function escapar(texto) {
@@ -96,7 +82,7 @@ async function enviarConvite({ nome, email, token, empresaId }) {
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: remetente(),
       to: email,
       subject: `🎉 Você foi convidado para o sistema ${marca.nomeFantasia}!`,
       html: montarHtml({
@@ -133,7 +119,7 @@ async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: remetente(),
       to: email,
       subject: `🔒 Redefinição de senha - ${marca.nomeFantasia}`,
       html: montarHtml({
@@ -154,11 +140,6 @@ async function enviarEmailRecuperacaoSenha({ nome, email, token, empresaId }) {
   }
 }
 
-/** Opt-in explícito de desenvolvimento; a flag é ignorada em produção. */
-function devLogCodigoAtivo(env = process.env) {
-  return env.DEV_LOG_CODIGO_ACESSO === 'true' && env.NODE_ENV !== 'production';
-}
-
 /**
  * Envia o código de 6 dígitos do primeiro acesso pelo app mobile.
  * @param {Object} params
@@ -168,12 +149,19 @@ function devLogCodigoAtivo(env = process.env) {
  * @param {string} params.empresaId
  */
 async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
-  // Sem SMTP (só fora de produção) o e-mail é pulado. O código só aparece no
-  // log com o opt-in DEV_LOG_CODIGO_ACESSO=true, para o fluxo mobile em
-  // desenvolvimento; nunca em produção e nunca junto do e-mail.
-  if (!process.env.EMAIL_HOST && process.env.NODE_ENV !== 'production') {
-    console.warn('[Email] SMTP não configurado — código de primeiro acesso não enviado.');
-    if (devLogCodigoAtivo()) console.warn(`[DEV] Código de primeiro acesso: ${codigo}`);
+  // Opt-in de desenvolvimento: imprime o código no log independentemente de
+  // o SMTP (Mailpit ou real) estar configurado, para não precisar abrir o
+  // Mailpit só para pegar o código durante testes manuais do app mobile.
+  // Ignorado em produção.
+  if (devLogCodigoAtivo()) console.warn(`[DEV] Código de primeiro acesso: ${codigo}`);
+
+  // Sem SMTP (só fora de produção) o e-mail é pulado completamente.
+  if (!smtpConfigurado() && process.env.NODE_ENV !== 'production') {
+    console.error(
+      '[Email] SMTP não configurado (EMAIL_HOST vazio) — o código de primeiro acesso NÃO foi enviado. ' +
+      'Use o Mailpit do docker-compose.dev.yml (http://localhost:8025). ' +
+      'Em produção, defina EMAIL_HOST/EMAIL_PORT/EMAIL_USER/EMAIL_PASS no .env.'
+    );
     return;
   }
 
@@ -182,7 +170,7 @@ async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: remetente(),
       to: email,
       subject: `🔑 Seu código de acesso - ${marca.nomeFantasia}`,
       html: montarHtml({
@@ -202,4 +190,6 @@ async function enviarCodigoPrimeiroAcesso({ nome, email, codigo, empresaId }) {
   }
 }
 
+// devLogCodigoAtivo é reexportado por compatibilidade: o sinal de "imprimir o
+// código no log" é usado por fora do serviço, mas mora em config/email.js.
 module.exports = { enviarConvite, enviarEmailRecuperacaoSenha, enviarCodigoPrimeiroAcesso, devLogCodigoAtivo };

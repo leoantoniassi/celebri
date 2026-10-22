@@ -112,6 +112,54 @@ function exigirSenhaBanco(env = process.env) {
 }
 
 /**
+ * Valida a configuração de e-mail (SMTP).
+ *
+ * Em produção o SMTP é obrigatório: o código de 6 dígitos do primeiro acesso
+ * é a única forma de o funcionário criar a senha no app. Sem provedor a API
+ * subia degradada e o e-mail nunca saía — falha silenciosa que só o
+ * funcionário percebia, no celular, esperando o código. Agora a API falha no
+ * start, com mensagem clara.
+ *
+ * Em desenvolvimento/teste só avisa: o dev usa o Mailpit do compose de dev ou
+ * o opt-in DEV_LOG_CODIGO_ACESSO.
+ */
+function exigirConfiguracaoSmtp(env = process.env) {
+  const ambiente = normalizarAmbiente(env);
+
+  if (!String(env.EMAIL_HOST || '').trim()) {
+    if (ambiente === 'production') {
+      throw new Error(
+        'EMAIL_HOST ausente: sem SMTP configurado o código de primeiro acesso do app nunca é enviado. ' +
+        'Defina EMAIL_HOST/EMAIL_PORT/EMAIL_USER/EMAIL_PASS/EMAIL_FROM no .env.'
+      );
+    }
+    if (ambiente === 'development') {
+      console.warn(
+        '[Email] SMTP não configurado (EMAIL_HOST vazio): o código de primeiro acesso não sai por e-mail. ' +
+        'No dev o docker-compose.dev.yml aponta para o Mailpit (http://localhost:8025); ' +
+        'sem ele, ative DEV_LOG_CODIGO_ACESSO=true para ler o código no log.'
+      );
+    }
+    return;
+  }
+
+  // Host definido mas credenciais faltando: derruba o start em produção,
+  // porque a autenticação só falharia na hora do envio — quando o
+  // funcionário já está esperando o código na tela.
+  const faltando = ['EMAIL_USER', 'EMAIL_PASS', 'EMAIL_FROM'].filter(
+    (chave) => !String(env[chave] || '').trim()
+  );
+  if (faltando.length === 0) return;
+
+  if (ambiente === 'production') {
+    throw new Error(
+      `Configuração de e-mail incompleta: defina ${faltando.join(', ')} no .env.`
+    );
+  }
+  console.warn(`[Email] Configuração de e-mail incompleta: ${faltando.join(', ')} vazio(s).`);
+}
+
+/**
  * Validação única de startup: normaliza NODE_ENV (grava de volta em env, para os
  * demais módulos compararem com o valor canônico) e exige segredos fortes.
  */
@@ -122,6 +170,9 @@ function exigirConfiguracao(env = process.env) {
   // Em produção FRONTEND_URL é obrigatória: falha aqui com mensagem limpa
   // em vez de estourar depois, na montagem do CORS do app.
   lerOrigensCors(env);
+  // Em produção o SMTP também é obrigatório (o código de primeiro acesso
+  // depende dele): a API não sobe degradada.
+  exigirConfiguracaoSmtp(env);
 }
 
 /** Assina o token de sessão. `tv` é a tokenVersion do usuário. */
@@ -197,6 +248,7 @@ module.exports = {
   urlBaseFrontend,
   exigirJwtSecret,
   exigirSenhaBanco,
+  exigirConfiguracaoSmtp,
   exigirConfiguracao,
   normalizarAmbiente,
   assinarToken,

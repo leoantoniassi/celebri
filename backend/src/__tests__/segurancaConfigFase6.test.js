@@ -16,6 +16,11 @@ describe('NODE_ENV', () => {
     const env = {
       NODE_ENV: 'Production', JWT_SECRET: FORTE, DB_PASS: 'Zq8!vTn3Lw0xKp',
       FRONTEND_URL: 'https://app.exemplo.com.br',
+      // SMTP é obrigatório em produção: sem ele o código de primeiro acesso
+      // do app nunca é enviado.
+      EMAIL_HOST: 'smtp.exemplo.com', EMAIL_PORT: '587',
+      EMAIL_USER: 'user@exemplo.com', EMAIL_PASS: 'senha-forte',
+      EMAIL_FROM: 'Celebri <nao-responda@celebri.local>',
     };
     exigirConfiguracao(env);
     expect(env.NODE_ENV).toBe('production');

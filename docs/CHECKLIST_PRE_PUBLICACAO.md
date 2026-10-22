@@ -20,6 +20,7 @@ algumas coisas ficam propositalmente inseguras (marcadas "REMOVER ANTES DE PUBLI
 - [ ] `TRUST_PROXY` igual ao número real de proxies à frente da API (nginx/LB), nunca maior.
 - [ ] `DEV_LOG_CODIGO_ACESSO` desligado (false/ausente).
 - [ ] SMTP real configurado (`EMAIL_HOST/PORT/USER/PASS/FROM`) e e-mail de convite/recuperação testado.
+  - Em `NODE_ENV=production` a API **não sobe** sem `EMAIL_HOST` (falha no start com mensagem clara): o código de primeiro acesso depende do e-mail, e sem provedor ele nunca chegaria.
 - [ ] `DOCUMENTOS_DIR` apontando para um volume persistente com backup.
 - [ ] SSL do banco com verificação: `DB_SSL=true` e `DB_SSL_CA` com a CA do provedor. Não usar `DB_SSL_REJECT_UNAUTHORIZED=false`.
 - [ ] Migrations aplicam sem erro no start (a API aborta se falharem).

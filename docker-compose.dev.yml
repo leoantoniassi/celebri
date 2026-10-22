@@ -3,22 +3,65 @@
 # Publica Postgres e API apenas em loopback (127.0.0.1) para
 # psql/DBeaver/Postman/npm run dev no host.
 # Uso: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-# (dev-up.sh / dev-up.ps1 já fazem isso via COMPOSE_FILE.)
+# (dev-up.ps1 já faz isso via COMPOSE_FILE.)
+#
+# IMPORTANTE — tag `!override` (Compose >= 2.24):
+# o Compose CONCATENA listas ao mesclar arquivos de override. Sem `!override`,
+# o `frontend` receberia as DUAS bindings do compose base ("${WEB_PORT:-8080}:8080",
+# nginx de produção) e do override ("127.0.0.1:${WEB_PORT:-8080}:5173", Vite),
+# ambas na mesma porta do host -> "port is already allocated".
+# Com `!override`, a lista do override SUBSTITUI a do compose base: em dev
+# sobra apenas a binding do Vite (127.0.0.1:${WEB_PORT:-8080} -> 5173).
+# O compose base sozinho (produção) continua publicando "${WEB_PORT:-8080}:8080".
 # ============================================================
 services:
   db:
-    ports:
+    # `!override` garante que só exista esta binding no host, mesmo que o
+    # compose base passe a publicar portas do Postgres no futuro.
+    ports: !override
       - "127.0.0.1:${DB_PORT:-5432}:5432"
   backend:
-    ports:
+    # `!override` garante que só exista esta binding no host, mesmo que o
+    # compose base passe a publicar portas da API no futuro.
+    ports: !override
       - "127.0.0.1:3001:3001"
-  # Frontend com Vite HMR (mantido do compose anterior; so para dev)
+    # No dev o SMTP é o Mailpit (serviço `mailpit` abaixo): a API entrega o
+    # e-mail de verdade (código de primeiro acesso, convite, recuperação) e
+    # ele fica numa caixa local em http://localhost:8025. Sem isso, a API sobe
+    # sem provedor de e-mail e o código de primeiro acesso nunca chega.
+    # Por ser um override de dev, o compose base (produção) continua usando
+    # o SMTP real do .env.
+    environment:
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: 1025
+      EMAIL_USER: dev@celebri.local
+      EMAIL_PASS: dev
+      EMAIL_FROM: Celebri <nao-responda@celebri.local>
+  # ============================================================
+  # 📥 Mailpit — caixa de entrada de e-mail do ambiente de dev
+  # ============================================================
+  # Captura todo e-mail enviado pela API e mostra em http://localhost:8025.
+  # É o que permite testar o primeiro acesso do app Celebri Staff sem
+  # contratar um provedor de e-mail transacional.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: celebri_mailpit
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:8025:8025"   # interface web (inbox)
+      - "127.0.0.1:1025:1025"   # SMTP (para rodar a API direto na máquina)
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+  # Frontend com Vite HMR (so para dev): substitui a binding de producao
+  # (nginx na 8080 do container) pela do Vite (5173), sem conflito de porta.
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     read_only: false
-    ports:
+    ports: !override
       - "127.0.0.1:${WEB_PORT:-8080}:5173"
     volumes:
       - ./frontend:/app
