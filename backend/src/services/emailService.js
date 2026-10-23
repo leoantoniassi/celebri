@@ -3,8 +3,7 @@
 // Responsabilidade única: criação de transporter e envio de mensagens
 // ============================================================
 // Os e-mails saem em nome do buffet contratante, não do Celebri: nome,
-// logo e cor do botão vêm da identidade visual do tenant. Antes o nome
-// "Mais Alegria" e as cores estavam fixos nos dois templates.
+// logo e cor do botão vêm da identidade visual do tenant.
 // ============================================================
 const { obterMarca } = require('../utils/brand');
 const { urlBaseFrontend } = require('../config/seguranca');

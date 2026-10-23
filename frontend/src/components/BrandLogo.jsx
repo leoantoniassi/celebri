@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import logoCelebri from '../assets/logoCelebri.svg';
 
 // ============================================================
 // Marca do tenant
@@ -24,7 +25,7 @@ export default function BrandLogo({ tamanho = 'md', className = '', logoUrl, nom
   const config = tema?.config;
   const { caixa, icone } = TAMANHOS[tamanho] || TAMANHOS.md;
   const nome = nomeFantasia || config?.nomeFantasia || 'Celebri';
-  const urlParaUsar = logoUrl !== undefined ? logoUrl : config?.logoUrl;
+  const urlParaUsar = logoUrl !== undefined ? logoUrl : config?.logoUrl || logoCelebri;
   const [imagemComErro, setImagemComErro] = useState(false);
 
   useEffect(() => {
@@ -32,12 +33,13 @@ export default function BrandLogo({ tamanho = 'md', className = '', logoUrl, nom
   }, [urlParaUsar]);
 
   if (urlParaUsar && !imagemComErro) {
+    const borda = urlParaUsar === logoCelebri ? 'rounded-xl' : 'rounded-full';
     return (
       <img
         src={urlParaUsar}
         alt={nome}
         onError={() => setImagemComErro(true)}
-        className={`${caixa} rounded-full object-contain ${className}`}
+        className={`${caixa} ${borda} object-contain ${className}`}
       />
     );
   }

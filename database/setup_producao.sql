@@ -3,7 +3,7 @@
 -- Migrations 004-011 (empresas/multi-tenant, escala mobile, portaria, garcom/cozinha) dependem de
 -- empresas e sao aplicadas por 'npm run migrate' (tambem automatico ao subir a API).
 -- ============================================================
--- PROJETO MAIS ALEGRIA - DDL (PostgreSQL)
+-- PROJETO Celebri - DDL (PostgreSQL)
 -- Script de inicializaÃ§Ã£o para Docker
 -- O banco 'projeto_mais_alegria' Ã© criado automaticamente
 -- pelo Docker via variÃ¡vel POSTGRES_DB
@@ -499,6 +499,6 @@ ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_aceitos_em TIMESTAM
 ALTER TABLE usuarios     ADD COLUMN IF NOT EXISTS usr_termos_versao VARCHAR(20);
 
 -- ============================================================
--- INSERÇÃO DO USUÁRIO INICIAL (GERENTE)
+-- INSERï¿½ï¿½O DO USUï¿½RIO INICIAL (GERENTE)
 -- ============================================================
-INSERT INTO usuarios (usr_nome, usr_email, usr_senha, usr_role, usr_status) VALUES ('Gerente Geral', 'gerente@maisalegria.com', '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'gerente', 'ativo');
+INSERT INTO usuarios (usr_nome, usr_email, usr_senha, usr_role, usr_status) VALUES ('Gerente Geral', 'gerente@celebri.com', '$2a$10$Nq.Tgkmz8Dz4/s9KWP.NDOSD33LH4pGBrGsnd5R3F/kqoymkRpyoa', 'gerente', 'ativo');

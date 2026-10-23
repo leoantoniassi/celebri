@@ -19,7 +19,7 @@ DECLARE
     v_coluna TEXT;
 BEGIN
     -- Empresa inaugural: recebe todos os dados que já existem no banco.
-    -- Mantém as cores originais do Mais Alegria como paleta padrão.
+    -- Mantém as cores originais do Celebri como paleta padrão.
     INSERT INTO empresas (emp_nome, emp_nome_fantasia, emp_slug)
     VALUES ('Celebri', 'Celebri', 'celebri')
     ON CONFLICT (emp_slug) DO NOTHING;

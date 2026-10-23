@@ -1,5 +1,5 @@
 -- ============================================================
--- PROJETO MAIS ALEGRIA - DADOS FICTÍCIOS ADAPTADOS (20 REGISTROS POR TABELA) cole em um script e rode usando alt + x
+-- PROJETO Celebri - DADOS FICTÍCIOS ADAPTADOS (20 REGISTROS POR TABELA) cole em um script e rode usando alt + x
 -- ============================================================
 
 BEGIN;

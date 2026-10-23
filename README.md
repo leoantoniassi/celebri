@@ -1,4 +1,4 @@
-# DOCUMENTAÇÃO DO PROJETO MAIS ALEGRIA
+# DOCUMENTAÇÃO DO PROJETO CELEBRI
 
 > **Como rodar o ambiente local:** copie `.env.example` para `.env`, ajuste
 > `DB_PASS`/`JWT_SECRET` e rode o script de subida — sobe os containers,
@@ -48,7 +48,7 @@ O e-mail sai pela rota `POST /api/auth/primeiro-acesso/codigo`. As causas, em or
 
 ## 1. Introdução
 
-O _Projeto Mais Alegria_ tem como objetivo desenvolver um sistema completo para a gestão de eventos e controle administrativo da equipe. A ausência de um fluxo centralizado para gerenciar contratos, informações de clientes e a escala de funcionários pode gerar desorganização e impactar a qualidade dos serviços prestados em eventos.
+O _Projeto Celebri_ tem como objetivo desenvolver um sistema completo para a gestão de eventos e controle administrativo da equipe. A ausência de um fluxo centralizado para gerenciar contratos, informações de clientes e a escala de funcionários pode gerar desorganização e impactar a qualidade dos serviços prestados em eventos.
 
 A solução proposta utiliza uma arquitetura web moderna para centralizar os dados, facilitando a comunicação com os clientes (incluindo integração ágil via WhatsApp), o armazenamento seguro de documentos e a categorização eficiente dos colaboradores envolvidos em cada evento.
 
@@ -217,7 +217,7 @@ O modelo físico segue a estrutura relacional padrão, utilizando tabelas interl
 
 ### Viabilidade de Mercado
 
-O setor de eventos (festas infantis, casamentos, confraternizações) exige alto nível de organização. A criação de um sistema próprio para o **Projeto Mais Alegria** reduzirá falhas de comunicação, perda de contratos e conflitos de agenda, tornando a empresa mais ágil, profissional e competitiva no mercado.
+O setor de eventos (festas infantis, casamentos, confraternizações) exige alto nível de organização. A criação de um sistema próprio para o **Projeto Celebri** reduzirá falhas de comunicação, perda de contratos e conflitos de agenda, tornando a empresa mais ágil, profissional e competitiva no mercado.
 
 ### Viabilidade de Recursos
 
@@ -266,7 +266,7 @@ O projeto é altamente viável, pois resolve dores reais de gestão de eventos u
 
 ## 9. Design
 
-O design do **Projeto Mais Alegria** deve transmitir profissionalismo sem perder a essência acolhedora e dinâmica do setor de eventos.
+O design do **Projeto Celebri** deve transmitir profissionalismo sem perder a essência acolhedora e dinâmica do setor de eventos.
 
 - **Paleta de Cores:**
   - 🟡 **Amarelo (Primária):**
@@ -297,7 +297,7 @@ A aplicação será construída com uma arquitetura dividida: o Frontend dinâmi
 
 ## 12. Considerações Finais
 
-O sistema do **Projeto Mais Alegria** centralizará as operações da empresa, substituindo planilhas soltas e pastas físicas por uma solução digital integrada. Com um banco de dados relacional bem estruturado e funcionalidades focadas na agilidade (como o atalho do WhatsApp e a gestão rápida de orçamentos), a equipe economizará tempo administrativo, podendo focar no que realmente importa: entregar eventos inesquecíveis aos seus clientes.
+O sistema do **Projeto Celebri** centralizará as operações da empresa, substituindo planilhas soltas e pastas físicas por uma solução digital integrada. Com um banco de dados relacional bem estruturado e funcionalidades focadas na agilidade (como o atalho do WhatsApp e a gestão rápida de orçamentos), a equipe economizará tempo administrativo, podendo focar no que realmente importa: entregar eventos inesquecíveis aos seus clientes.
 
 ## 13. Módulo de Estatística Descritiva
 

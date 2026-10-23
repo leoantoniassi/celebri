@@ -2,7 +2,7 @@
 // Marca do tenant em textos voltados ao usuário final
 // ============================================================
 // Mensagens de WhatsApp e e-mails saem em nome do buffet contratante,
-// não do Celebri. Antes o nome "Mais Alegria" estava fixo em 5
+// não do Celebri. Antes o nome "Celebri" estava fixo em 5
 // controllers e 2 templates de e-mail — cada novo cliente exigiria
 // editar código.
 //

@@ -1,5 +1,5 @@
 -- ============================================================
--- PROJETO MAIS ALEGRIA - DDL (PostgreSQL)
+-- PROJETO Celebri - DDL (PostgreSQL)
 -- Script de inicialização para Docker
 -- O banco 'projeto_mais_alegria' é criado automaticamente
 -- pelo Docker via variável POSTGRES_DB

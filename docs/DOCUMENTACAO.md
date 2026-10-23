@@ -1,4 +1,4 @@
-# 📋 Documentação Completa — Projeto Mais Alegria
+# 📋 Documentação Completa — Projeto Celebri
 
 > **Sistema de Gestão de Eventos** desenvolvido como Projeto Integrador do 4º Semestre da FATEC.
 
@@ -6,7 +6,7 @@
 
 ## 1. Visão Geral do Sistema
 
-O **Projeto Mais Alegria** é uma aplicação web completa para gerenciamento de eventos festivos (aniversários, casamentos, confraternizações, etc.). O sistema permite controlar todo o ciclo de vida de um evento — desde o cadastro do cliente, passando pela elaboração de orçamentos, alocação de funcionários, controle de estoque de produtos e gestão de documentos.
+O **Projeto Celebri** é uma aplicação web completa para gerenciamento de eventos festivos (aniversários, casamentos, confraternizações, etc.). O sistema permite controlar todo o ciclo de vida de um evento — desde o cadastro do cliente, passando pela elaboração de orçamentos, alocação de funcionários, controle de estoque de produtos e gestão de documentos.
 
 ### 1.1 Objetivo
 
@@ -521,7 +521,7 @@ Variáveis do banco em produção: `DB_SSL`, `DB_SSL_CA` e `DB_SSL_REJECT_UNAUTH
 
 | Email | Senha (hash) | Role |
 |---|---|---|
-<!-- | admin@maisalegria.com | (hash bcrypt) | admin | -->
+<!-- | admin@celebri.com | (hash bcrypt) | admin | -->
 | gerente@celebri.com | (hash bcrypt) | gerente |
 | operador@celebri.com | (hash bcrypt) | operador |
 
@@ -654,4 +654,4 @@ Foram selecionadas três variáveis quantitativas do item anterior para avaliaç
 
 ---
 
-*Documentação gerada em 22/04/2026 — Projeto Mais Alegria © FATEC*
+*Documentação gerada em 22/04/2026 — Projeto Celebri © FATEC*

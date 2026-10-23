@@ -18,7 +18,7 @@ Por este instrumento particular, as partes abaixo qualificadas têm, entre si, j
 ---
 
 ## 2. DO OBJETO DO CONTRATO
-O objeto deste contrato é o desenvolvimento, implantação e posterior manutenção preventiva e corretiva de um sistema web sob medida denominado **"Projeto Mais Alegria"**, composto por:
+O objeto deste contrato é o desenvolvimento, implantação e posterior manutenção preventiva e corretiva de um sistema web sob medida denominado **"Projeto Celebri"**, composto por:
 *   **Frontend:** Painel administrativo interativo em React (cadastro de clientes, locais, fornecedores, catálogo, funcionários, orçamentos, estoque e escala de eventos).
 *   **Backend & Banco de Dados:** Servidor em Node.js com banco de dados PostgreSQL integrado.
 *   **Módulos Especiais:** Dashboard de relatórios com gráficos analíticos, módulo estatístico, upload de contratos/documentos e atalhos rápidos de envio de mensagens via WhatsApp.

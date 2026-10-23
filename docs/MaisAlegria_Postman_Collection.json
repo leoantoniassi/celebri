@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-		"name": "Projeto Mais Alegria",
-		"description": "Coleção de testes para a API do Projeto Mais Alegria",
+		"name": "Projeto Celebri",
+		"description": "Coleção de testes para a API do Projeto Celebri",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -38,7 +38,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"nome\": \"Admin Teste\",\n  \"email\": \"admin.teste@maisalegria.com\",\n  \"senha\": \"123456\",\n  \"role\": \"admin\"\n}"
+							"raw": "{\n  \"nome\": \"Admin Teste\",\n  \"email\": \"admin.teste@celebri.com\",\n  \"senha\": \"123456\",\n  \"role\": \"admin\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/register",
@@ -79,7 +79,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"admin@maisalegria.com\",\n  \"senha\": \"123456\"\n}"
+							"raw": "{\n  \"email\": \"admin@celebri.com\",\n  \"senha\": \"123456\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/login",
