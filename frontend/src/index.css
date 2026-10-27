@@ -98,7 +98,7 @@ h1, h2, h3, .font-headline {
   background: linear-gradient(
     135deg,
     var(--color-primary) 0%,
-    color-mix(in oklab, var(--color-primary) 88%, black) 100%
+    var(--color-secondary) 100%
   );
 }
 
