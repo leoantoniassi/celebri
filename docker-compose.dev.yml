@@ -24,7 +24,9 @@ services:
     # `!override` garante que só exista esta binding no host, mesmo que o
     # compose base passe a publicar portas da API no futuro.
     ports: !override
-      - "127.0.0.1:3001:3001"
+      # Para testar o app mobile em celular físico, suba com API_BIND=0.0.0.0
+      # (ou o IP da LAN). O padrão continua só loopback.
+      - "${API_BIND:-127.0.0.1}:3001:3001"
     # No dev o SMTP é o Mailpit (serviço `mailpit` abaixo): a API entrega o
     # e-mail de verdade (código de primeiro acesso, convite, recuperação) e
     # ele fica numa caixa local em http://localhost:8025. Sem isso, a API sobe
