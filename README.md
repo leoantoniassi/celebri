@@ -135,33 +135,35 @@ Para o desenvolvimento deste projeto, serão utilizadas as seguintes tecnologias
 
 ## 4. Modelo do Banco de Dados Relacional
 
-O banco de dados do projeto será estruturado utilizando um **Banco de Dados Relacional** PostgreSQL , garantindo a integridade referencial dos dados e permitindo o cruzamento de informações entre clientes, eventos, funcionários, financeiro e suprimentos de forma robusta.
+O banco de dados relacional é estruturado em **PostgreSQL 15**, com suporte nativo a arquitetura **SaaS Multi-tenant** (isolamento de registros por `emp_id`), chaves primárias em UUID e soft delete (`deletado_em`), garantindo rastreabilidade, consistência e total segurança jurídica (LGPD).
 
-> **Usuários:** Armazena os usuários do sistema com controle de acesso por níveis (`gerente` e `operador`).
+> **Empresas:** Armazena os buffets contratantes do SaaS White Label (nome, CNPJ, logotipo, cores institucionais e configurações de escala).
 
-> **Clientes:** Armazena os dados pessoais e de contato (Nome, E-mail, RG/CPF, Telefone).
+> **Usuários:** Armazena os usuários com controle de acesso por perfis (`gerente` e `operador`) e vínculo corporativo.
 
-> **Funcionários:** Armazena os dados da equipe e a função exercida (Recreador, Garçom, etc.).
+> **Clientes:** Armazena clientes contratantes de festas (Nome, E-mail, RG/CPF, Telefone).
 
-> **Produtos:** Armazena o inventário de itens disponíveis no estoque, registrando nome, categoria, quantidade, unidade de medida e custo unitário.
+> **Funcionários & Funções:** Armazena os colaboradores da equipe e suas funções operacionais vinculadas aos módulos do aplicativo Celebri Staff (`portaria`, `garcom`, `cozinha`).
 
-> **Orçamentos:** Registra as propostas financeiras geradas para os clientes, contendo valor total, data de validade, status (pendente, aprovado, reprovado) e uma chave estrangeira que o vincula ao Cliente.
+> **Produtos & Categorias:** Armazena o inventário de itens disponíveis no estoque (custos, quantidades e unidade de medida).
 
-> **Eventos:** Registra os detalhes dos eventos, possuindo chave estrangeira que o vincula a um Cliente, a um Local e, opcionalmente, ao Orçamento de origem. Também consolida a quantidade detalhada de convidados (adultos, crianças e bebês) e o status do evento.
+> **Orçamentos:** Registra propostas financeiras comerciais com itens detalhados do estoque e status.
 
-> **Documentos:** Armazena o caminho ou URL externa do arquivo (ex: .pdf, .jpg, .png), referenciando a qual Cliente ou Evento o documento pertence.
+> **Eventos:** Registra eventos agendados, vinculados ao cliente, local e orçamento, consolidando contagem de convidados.
 
-> **Locais:** Armazena os locais de eventos e seus respectivos endereços (logradouro, número, complemento, bairro, cidade, estado, CEP) e observações adicionais.
+> **Escala:** Alocação de colaboradores em eventos com verificação de conflitos de horário, confirmação de presença e check-in operacional.
 
-> **Fornecedores:** Armazena os dados de fornecedores associados a categorias específicas, com suporte a contato por WhatsApp.
+> **Convites:** Registro de convidados por evento com emissão de QR Code criptográfico dinâmico (com suporte a famílias e entradas parciais).
 
-> **Catalogos:** Armazena os pacotes de serviços e opções de buffet disponíveis para apresentação.
+> **Mesas & Pedidos:** Mapeamento tátil de layout do salão e comandas eletrônicas emitidas por garçons para a cozinha com alertas de alergia alimentar.
 
-> **Escala:** Tabela intermediária (N:M) para registrar quais funcionários estão alocados em quais eventos.
+> **Serviços de Evento:** Cardápio e cronograma de fornecimento com horário previsto.
 
-> **Evento_Produto:** Tabela intermediária (N:M) que registra os produtos do estoque e as quantidades que serão consumidas em um evento específico.
+> **Locais:** Salões e espaços de festas com endereço e capacidade máxima.
 
-> **Orcamento_Produto:** Tabela intermediária (N:M) que registra quais produtos do estoque e suas respectivas quantidades e preços unitários listados em um orçamento.
+> **Fornecedores & Catálogos:** Parceiros de suprimentos e serviços ofertados aos clientes.
+
+> **Auditoria:** Registro imutável de eventos de autenticação, acessos a dados e ações sob a LGPD.
 
 ![Diagrama do Banco de Dados Relacional](img/projeto_mais_alegria-diagrama-tabelas.png)
 
@@ -264,22 +266,19 @@ O projeto é altamente viável, pois resolve dores reais de gestão de eventos u
 
 ---
 
-## 9. Design
+## 9. Design & Identidade Visual
 
-O design do **Projeto Celebri** deve transmitir profissionalismo sem perder a essência acolhedora e dinâmica do setor de eventos.
+O design do **Projeto Celebri** une profissionalismo com uma estética moderna e acolhedora, com suporte pleno a **White Label** para buffets assinantes.
 
-- **Paleta de Cores:**
-  - 🟡 **Amarelo (Primária):**
-    - **HEX:** `#FEDC57` | **RGB:** `254, 220, 87`
-  - 🟢 **Verde (Secundária):**
-    - **HEX:** `#7DBA00` | **RGB:** `125, 186, 0`
-  - ⚪ **Branco (Base/Fundo):**
-    - **HEX:** `#FFFFFF` | **RGB:** `255, 255, 255`
-  - 🟣 **Roxo (Cor Extra/Apoio):**
-    - **HEX:** `#6600A1` | **RGB:** `102, 0, 161`
-
-- **Tipografia:** Fontes modernas, sem serifa e de alta legibilidade (ex: Roboto, Inter ou Poppins) para organizar bem as tabelas de clientes e escalas.
-- **Layout:** Totalmente responsivo (graças aos componentes do React), garantindo que a equipe administrativa possa consultar dados tanto no computador do escritório quanto no smartphone durante a montagem de uma festa.
+- **Marca Oficial Celebri:**
+  - **Logo:** `logo-confetti.svg` (badge navy com "C" em gradiente e confetes).
+  - **Paleta Institucional Oficial:**
+    - 🔹 **Ciano (Primária/Destaque 1):** `#1CEAFF` | **RGB:** `28, 234, 255`
+    - 🟣 **Magenta (Secundária/Destaque 2):** `#FF45FF` | **RGB:** `255, 69, 255`
+    - 🌌 **Navy (Fundo/Superfície):** `#0E1A3A` | `#16254F`
+    - 🎨 **White Label Dinâmico:** Buffets assinantes podem personalizar suas cores primárias e secundárias pelo painel web.
+- **Tipografia Oficial:** **Plus Jakarta Sans** (títulos e headlines) e **Inter** (corpo de texto e dados operacionais).
+- **Layout:** Totalmente responsivo no painel web (React + Tailwind CSS) e aplicativo móvel (.NET MAUI) integrado para a equipe de salão.
 
 ---
 

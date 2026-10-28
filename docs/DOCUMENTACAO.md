@@ -102,63 +102,41 @@ O sistema segue uma arquitetura **cliente-servidor** em três camadas, totalment
 ## 4. Estrutura de Pastas
 
 ```
-projeto-mais_alegria/
-├── .env                          # Variáveis globais (DB)
-├── docker-compose.yml            # Orquestração dos serviços
+celebri/
+├── .env                          # Variáveis globais (DB, Docker)
+├── .env.example                  # Template documentado de ambiente
+├── docker-compose.yml            # Orquestração dos serviços (produção)
+├── docker-compose.dev.yml        # Override para desenvolvimento local
+├── dev-up.ps1 / dev-up.sh        # Scripts de inicialização ágil
 │
 ├── backend/
-│   ├── .env                      # Variáveis do backend (JWT, DB)
+│   ├── .env                      # Variáveis do backend (JWT, DB, SMTP)
 │   ├── Dockerfile                # Imagem Node.js 22-alpine
 │   ├── package.json
 │   ├── uploads/                  # Armazena documentos enviados
+│   ├── scripts/                  # Scripts de migração e retenção LGPD
 │   └── src/
 │       ├── server.js             # Entry point — inicia Express
-│       ├── app.js                # Configuração do Express
+│       ├── app.js                # Configuração do Express, middlewares, helmet, CORS
 │       ├── config/
 │       │   └── database.js       # Conexão Sequelize + PostgreSQL
-│       ├── models/               # 10 modelos Sequelize
+│       ├── models/               # Modelos Sequelize com multi-tenancy e soft delete
 │       │   ├── index.js          # Associações entre modelos
-│       │   ├── Usuario.js
-│       │   ├── Cliente.js
-│       │   ├── Funcionario.js
-│       │   ├── Produto.js
-│       │   ├── Orcamento.js
-│       │   ├── Evento.js
-│       │   ├── Documento.js
-│       │   ├── Escala.js
-│       │   ├── EventoProduto.js
-│       │   └── OrcamentoProduto.js
-│       ├── controllers/          # Lógica de negócio (9 controllers)
-│       │   ├── authController.js
-│       │   ├── clienteController.js
-│       │   ├── funcionarioController.js
-│       │   ├── produtoController.js
-│       │   ├── orcamentoController.js
-│       │   ├── eventoController.js
-│       │   ├── documentoController.js
-│       │   ├── escalaController.js
-│       │   └── dashboardController.js
-│       ├── routes/               # Definição das rotas REST
-│       │   ├── index.js          # Agregador de rotas sob /api
-│       │   ├── auth.routes.js
-│       │   ├── clientes.routes.js
-│       │   ├── funcionarios.routes.js
-│       │   ├── produtos.routes.js
-│       │   ├── orcamentos.routes.js
-│       │   ├── eventos.routes.js
-│       │   ├── documentos.routes.js
-│       │   ├── escala.routes.js
-│       │   └── dashboard.routes.js
-│       ├── middleware/
-│       │   ├── auth.js           # Autenticação JWT
-│       │   ├── roles.js          # Autorização por perfil
-│       │   └── errorHandler.js   # Tratamento global de erros
-│       └── utils/
-│           └── whatsapp.js       # Gerador de link WhatsApp
+│       │   ├── Usuario.js, Cliente.js, Funcionario.js, Produto.js
+│       │   ├── Orcamento.js, Evento.js, Documento.js, Escala.js
+│       │   ├── Empresa.js, Local.js, Fornecedor.js, Catalogo.js
+│       │   ├── Mesa.js, Pedido.js, PedidoItem.js, Convite.js
+│       │   ├── Funcao.js, ServicoEvento.js, Auditoria.js
+│       │   ├── EventoProduto.js, OrcamentoProduto.js
+│       │   └── CategoriaProduto.js, CategoriaFornecedor.js
+│       ├── controllers/          # Lógica de negócio e endpoints REST
+│       ├── routes/               # Definição das rotas REST (/api/*)
+│       ├── middleware/           # auth, tenant, roles, upload, auditoria, errorHandler
+│       └── services/             # Regras complexas (auditoria, lgpd, email)
 │
 ├── frontend/
 │   ├── Dockerfile                # Build multi-stage (Node → Nginx)
-│   ├── nginx.conf                # Proxy reverso para /api
+│   ├── nginx.conf                # Proxy reverso para /api + CSP
 │   ├── vite.config.js            # Configuração Vite + proxy dev
 │   ├── package.json
 │   ├── index.html
@@ -166,62 +144,53 @@ projeto-mais_alegria/
 │       ├── main.jsx              # Entry point React
 │       ├── App.jsx               # Rotas e layout principal
 │       ├── index.css             # Design system (TailwindCSS)
-│       ├── contexts/
-│       │   └── AuthContext.jsx   # Contexto de autenticação
-│       ├── services/
-│       │   └── api.js            # Instância Axios + interceptors
-│       ├── components/
-│       │   ├── ErrorBoundary.jsx # Captura erros de renderização
-│       │   └── layout/
-│       │       ├── AppLayout.jsx # Layout com Sidebar + TopNav
-│       │       ├── Sidebar.jsx   # Navegação lateral
-│       │       └── TopNav.jsx    # Barra superior
-│       └── pages/                # 8 páginas da aplicação
-│           ├── Login/
-│           ├── Dashboard/
-│           ├── Clientes/
-│           ├── Funcionarios/
-│           ├── Eventos/
-│           ├── Estoque/
-│           ├── Orcamentos/
-│           └── Documentos/
+│       ├── contexts/             # AuthContext, ThemeContext
+│       ├── services/             # api.js (Axios + interceptors)
+│       ├── components/           # Componentes compartilhados e layout
+│       └── pages/                # Telas da aplicação (Dashboard, Clientes, Colaboradores,
+│                                 # Fornecedores, Orçamentos, Eventos, Estoque, Documentos,
+│                                 # Catálogos, Cadastros, Usuários, Configurações, Login, etc.)
 │
 ├── database/
-│   ├── init.sql                  # DDL — criação de todas as tabelas
-│   └── seed.sql                  # Dados fictícios para testes
+│   ├── init.sql                  # DDL inicial
+│   ├── seed.sql                  # Dados fictícios para testes
+│   └── migrations/               # Migrations versionadas (001 a 013)
 │
-├── img/
-│   ├── casosUso.png              # Diagrama de casos de uso
-│   └── projeto_mais_alegria-diagrama-tabelas.png  # Diagrama ER
-│
-└── docs/
-    └── PI_Quarto_Semestre.docx   # Documento do projeto integrador
+└── docs/                         # Documentação técnica, checklist e LGPD
 ```
 
 ---
 
 ## 5. Modelo de Dados
 
-O banco possui **10 tabelas** com uso de UUID como chave primária e soft delete (campo `deletado_em`).
+O banco de dados relacional (PostgreSQL 15) possui arquitetura **multi-tenant** com isolamento por empresa (`emp_id`), chaves primárias em UUID e soft delete generalizado (`deletado_em`).
 
 ### 5.1 Diagrama Entidade-Relacionamento
 
-![Diagrama ER do banco de dados](C:/Users/franc/.gemini/antigravity/brain/82c2f440-efeb-4584-b7fa-c898a67504ab/diagrama_tabelas.png)
+![Diagrama ER do banco de dados](../img/projeto_mais_alegria-diagrama-tabelas.png)
 
-### 5.2 Descrição das Tabelas
+### 5.2 Descrição das Entidades Principais
 
 | Tabela | Descrição | Campos Principais |
 |---|---|---|
-| `usuarios` | Usuários do sistema (login) | nome, email, senha (hash), role |
-| `clientes` | Clientes contratantes | nome, email, RG/CPF, telefone |
-| `funcionarios` | Equipe operacional | nome, email, telefone, função |
-| `produtos` | Itens do estoque | nome, categoria, quantidade, unidade, custo |
-| `orcamentos` | Propostas financeiras | cliente, valor total, validade, status |
-| `eventos` | Eventos planejados | cliente, orçamento, data, local, público |
-| `documentos` | Arquivos anexados | cliente, evento, arquivo, tipo (pdf/jpg/png) |
-| `escala` | Alocação funcionário↔evento | evento, funcionário, observações |
-| `evento_produto` | Produtos usados em evento | evento, produto, quantidade |
-| `orcamento_produto` | Itens do orçamento | orçamento, produto, quantidade, preço |
+| `empresas` | Contratantes SaaS (White Label) | nome_fantasia, razao_social, cnpj, cores, logo, intervalo_escala |
+| `usuarios` | Contas de acesso ao sistema e app | email, senha (hash bcrypt), role (`gerente`, `operador`), emp_id |
+| `clientes` | Clientes finais do buffet | nome, email, rg_cpf, telefone, emp_id |
+| `funcionarios` | Equipe operacional do buffet | nome, email, telefone, funcao_id, emp_id |
+| `funcoes` | Funções operacionais e vínculo com app | nome, modulo_app (`portaria`, `garcom`, `cozinha`), emp_id |
+| `produtos` | Inventário de estoque | nome, categoria_id, quantidade, custo, emp_id |
+| `orcamentos` | Propostas financeiras comerciais | cliente_id, valor_total, validade, status, emp_id |
+| `eventos` | Eventos executados | cliente_id, orcamento_id, local_id, data, status, emp_id |
+| `escala` | Alocação de colaboradores no evento | evento_id, funcionario_id, funcao_id, confirmacao, checkin_em |
+| `convites` | Convites com QR code dinâmico | evento_id, nome, quantidade_pessoas, token_acesso, emp_id |
+| `mesas` | Layout e mapa de salão para garçom | local_id, numero, capacidade, posX, posY, emp_id |
+| `pedidos` / `pedido_itens` | Comanda do garçom para a cozinha | evento_id, mesa_id, status, itens, alergias |
+| `evento_servico` | Cardápio e cronograma de serviços | evento_id, descricao, horario_previsto, status |
+| `documentos` | Arquivos e contratos anexados | cliente_id, evento_id, arquivo_path, tipo |
+| `locais` | Locais de realização de festas | nome, endereco, capacidade_maxima, emp_id |
+| `fornecedores` | Parceiros de suprimentos | nome, categoria_id, contato_whatsapp, emp_id |
+| `catalogos` | Pacotes de serviços comercializáveis | titulo, descricao, preco_base, url_externa, emp_id |
+| `auditoria` | Registro de trilha LGPD e segurança | usuario_id, acao, recurso, detalhes, ip |
 
 ### 5.3 Relacionamentos
 
@@ -244,7 +213,7 @@ erDiagram
 
 ## 6. Casos de Uso
 
-![Diagrama de Casos de Uso](C:/Users/franc/.gemini/antigravity/brain/82c2f440-efeb-4584-b7fa-c898a67504ab/casos_uso.png)
+![Diagrama de Casos de Uso](../img/casosUso.png)
 
 O ator **Administrador** pode:
 
@@ -400,33 +369,43 @@ Todas as rotas são prefixadas com `/api`. Respostas seguem o padrão:
 
 ## 10. Frontend — Páginas e Componentes
 
-### 10.1 Páginas
+### 10.1 Páginas do Painel Administrativo Web
 
 | Página | Rota | Descrição |
 |---|---|---|
-| **Login** | `/login` | Tela de autenticação |
-| **Dashboard** | `/` | Indicadores + próximos eventos |
-| **Clientes** | `/clientes` | CRUD de clientes + WhatsApp |
-| **Colaboradores** | `/funcionarios` | CRUD de funcionários |
-| **Orçamentos** | `/orcamentos` | CRUD + aprovação de orçamentos |
-| **Eventos** | `/eventos` | CRUD + gestão de status |
-| **Estoque** | `/estoque` | CRUD de produtos |
-| **Documentos** | `/documentos` | Upload/download de arquivos |
+| **Login** | `/login` | Tela de autenticação por e-mail e senha |
+| **Dashboard** | `/` | Indicadores-chave, gráficos de sazonalidade e próximos eventos |
+| **Clientes** | `/clientes` | Gestão de clientes com busca e atalho para WhatsApp |
+| **Colaboradores** | `/funcionarios` | Gestão de equipe, funções operacionais e vínculo de conta |
+| **Fornecedores** | `/fornecedores` | Cadastro de parceiros e fornecedores por categoria |
+| **Orçamentos** | `/orcamentos` | Elaboração de propostas, itens de estoque e aprovação |
+| **Eventos** | `/eventos` | Detalhes do evento, escala de equipe, convites QR e cardápio |
+| **Estoque** | `/estoque` | Produtos, insumos, categorias e controle de custos |
+| **Documentos** | `/documentos` | Armazenamento de contratos e mídias vinculadas |
+| **Catálogos** | `/catalogos` | Pacotes e serviços apresentáveis ao cliente |
+| **Cadastros Gerais** | `/cadastros` | Gestão de Funções (com telas do app), Locais (com mapa de mesas) e Categorias |
+| **Usuários** | `/usuarios` | Controle de acessos de operadores e gerentes |
+| **Configurações** | `/configuracoes` | Identidade visual da empresa (cores, logo, nome) e intervalo mínimo de escalas |
+| **Privacidade** | `/privacidade` | Página pública de transparência e termos LGPD |
+| **Definir Senha** | `/definir-senha` | Ativação de conta e aceite de termos de uso |
 
 ### 10.2 Componentes Compartilhados
 
 | Componente | Descrição |
 |---|---|
-| `AppLayout` | Layout com Sidebar fixa + TopNav + área de conteúdo |
-| `Sidebar` | Navegação lateral com 7 itens + perfil do usuário |
-| `TopNav` | Barra superior com título e ações |
-| `ErrorBoundary` | Captura erros de renderização e exibe fallback |
+| `AppLayout` | Layout com Sidebar fixa/responsiva + TopNav + GlobalSearch + área de conteúdo |
+| `Sidebar` | Navegação lateral com 11 itens + perfil do usuário |
+| `TopNav` | Barra superior com título dinâmico, busca global, menu de configurações e ações |
+| `GlobalSearch` | Modal de busca global instantânea em eventos, clientes e orçamentos |
+| `SettingsMenu` | Menu de configurações rápidas, alternância de tema e logout |
+| `BrandLogo` | Renderizador dinâmico de logotipo institucional ou da empresa parceira |
+| `ErrorBoundary` | Captura erros de renderização e exibe fallback amigável |
 
-### 10.3 Design System
+### 10.3 Design System & White Label
 
 - **Fontes**: Plus Jakarta Sans (headlines), Inter (body)
-- **Paleta**: Amarelo `#FEDC57` (primária), Verde `#7DBA00` (secundária), Roxo `#6600A1` (terciária)
-- **Fundo**: `#fdfcf5` (tom quente off-white)
+- **Paleta Oficial Celebri**: Ciano `#1CEAFF` (destaque 1), Magenta `#FF45FF` (destaque 2), Navy `#0E1A3A` e `#16254F` (fundo/superfície). Suporte nativo a injeção dinâmica de temas customizados por buffet via `ThemeContext`.
+- **Fundo**: `#fdfcf5` (modo claro quente) / paleta Dark com contraste auditado
 - **Ícones**: Google Material Symbols Outlined
 - **Animações**: slideInRight, fadeIn
 
