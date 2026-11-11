@@ -451,31 +451,47 @@ describe('EscalaController — conflito com gap de 2h', () => {
       expect(res.status).toBe(404);
     });
 
-    test('check-in dentro da janela (até 3h antes) confirma presença', async () => {
-      const escala = escalaPropria(eventoFuturo);
+    test('check-in dentro da janela (até 3h antes) com presença confirmada', async () => {
+      const escala = escalaPropria(eventoFuturo, { confirmacao: 'confirmado' });
       Escala.escalaPorId.mockResolvedValue(escala);
 
       const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
 
       expect(res.status).toBe(200);
       expect(escala.update).toHaveBeenCalledWith(
-        expect.objectContaining({ checkinEm: expect.any(Date), confirmacao: 'confirmado' })
+        expect.objectContaining({ checkinEm: expect.any(Date), confirmadoEm: expect.any(Date) })
       );
+    });
+
+    test.each([
+      ['sem resposta', null],
+      ['pendente', 'pendente'],
+      ['recusada', 'recusado'],
+    ])('check-in com presença %s é recusado', async (_rotulo, confirmacao) => {
+      const escala = escalaPropria(eventoFuturo, { confirmacao });
+      Escala.escalaPorId.mockResolvedValue(escala);
+
+      const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain('Confirme sua presença');
+      expect(escala.update).not.toHaveBeenCalled();
     });
 
     test('check-in muito antes do evento é recusado', async () => {
       Escala.escalaPorId.mockResolvedValue(escalaPropria({
         dataEvento: new Date(agora + 5 * 60 * 60 * 1000),
         horarioTermino: new Date(agora + 8 * 60 * 60 * 1000),
-      }));
+      }, { confirmacao: 'confirmado' }));
 
       const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
 
       expect(res.status).toBe(409);
+      expect(res.body.message).toContain('3h antes');
     });
 
     test('check-in repetido é recusado', async () => {
-      Escala.escalaPorId.mockResolvedValue(escalaPropria(eventoFuturo, { checkinEm: new Date() }));
+      Escala.escalaPorId.mockResolvedValue(escalaPropria(eventoFuturo, { confirmacao: 'confirmado', checkinEm: new Date() }));
       const res = await request(app).post('/api/escala/00000001-0000-4000-8000-000000000001/checkin');
       expect(res.status).toBe(409);
     });

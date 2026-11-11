@@ -295,6 +295,13 @@ async function fazerCheckin(req, res, next) {
     if (escala.checkinEm) {
       return res.status(409).json({ success: false, message: 'Check-in já realizado.' });
     }
+    // Check-in só depois de o funcionário confirmar presença no app.
+    if (escala.confirmacao !== 'confirmado') {
+      return res.status(409).json({
+        success: false,
+        message: 'Confirme sua presença antes de fazer o check-in.',
+      });
+    }
 
     const agora = Date.now();
     const inicio = new Date(escala.evento.dataEvento).getTime();
@@ -308,7 +315,6 @@ async function fazerCheckin(req, res, next) {
 
     await escala.update({
       checkinEm: new Date(agora),
-      confirmacao: 'confirmado',
       confirmadoEm: escala.confirmadoEm || new Date(agora),
       atualizadoEm: new Date(agora),
     });
