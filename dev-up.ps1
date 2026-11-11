@@ -96,6 +96,25 @@ function Test-PortaDuplicada {
     return $null
 }
 
+# Lê uma variável do .env (sem expandir nada; aspas em volta são removidas).
+function Get-EnvVar {
+    param([string]$Nome)
+    $linha = Select-String -LiteralPath ".env" -Pattern "^\s*$Nome\s*=\s*(.*?)\s*$" |
+        Select-Object -First 1
+    if (-not $linha) { return "" }
+    return ($linha.Matches[0].Groups[1].Value -replace '^["'']|["'']$', '')
+}
+
+# Túnel ngrok (app Celebri Staff no celular, sem cabo): liga o profile
+# `tunel` do docker-compose.dev.yml quando o .env tem token e domínio.
+$ngrokDomain = (Get-EnvVar "NGROK_DOMAIN") -replace '^https?://', '' -replace '/.*$', ''
+$ngrokAtivo = (Get-EnvVar "NGROK_AUTHTOKEN") -and $ngrokDomain
+if ($ngrokAtivo) {
+    $env:COMPOSE_PROFILES = "tunel"
+} else {
+    Remove-Item Env:COMPOSE_PROFILES -ErrorAction SilentlyContinue
+}
+
 $versaoCompose = Test-ComposeSuportaOverride
 if ($versaoCompose -and $versaoCompose -lt [version]"2.24.0") {
     Write-Host "Erro: Docker Compose $versaoCompose é antigo demais (mínimo 2.24)." -ForegroundColor Red
@@ -143,6 +162,26 @@ Write-Host "Ambiente no ar (dev):"
 Write-Host "  Frontend: http://localhost:$webPort  (Vite, HMR)"
 Write-Host "  API:      http://127.0.0.1:3001/api/health"
 Write-Host "  Postgres: 127.0.0.1:5432"
+if ($ngrokAtivo) {
+    $urlTunel = "https://$ngrokDomain/api/health"
+    $tunelOk = $false
+    for ($i = 0; $i -lt 15; $i++) {
+        try {
+            $r = Invoke-WebRequest -Uri $urlTunel -UseBasicParsing -TimeoutSec 5 `
+                -Headers @{ "ngrok-skip-browser-warning" = "true" }
+            if ($r.StatusCode -eq 200) { $tunelOk = $true; break }
+        } catch {
+            Start-Sleep -Seconds 2
+        }
+    }
+    if ($tunelOk) {
+        Write-Host "  Túnel:    https://$ngrokDomain/api/  (app Celebri Staff no celular)"
+    } else {
+        Write-Host "  Aviso: o túnel ngrok não respondeu em $urlTunel (veja 'docker compose logs ngrok')." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  Túnel:    desligado (preencha NGROK_AUTHTOKEN e NGROK_DOMAIN no .env para o celular)"
+}
 Write-Host ""
 Write-Host "Credenciais de teste (tenant: celebri):"
 Write-Host "  Gerente:  gerente@celebri.com  / 123456"

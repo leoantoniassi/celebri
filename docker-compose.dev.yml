@@ -56,6 +56,31 @@ services:
       - backend
     security_opt:
       - no-new-privileges:true
+  # ============================================================
+  # 🌐 ngrok — túnel HTTPS para testar o app Celebri Staff no celular
+  # ============================================================
+  # Opcional (profile `tunel`): só sobe com `docker compose --profile tunel up -d`
+  # ou pelo dev-up.ps1 quando NGROK_AUTHTOKEN e NGROK_DOMAIN estão no .env.
+  # Expõe a API em https://${NGROK_DOMAIN}/api/ — funciona de qualquer rede
+  # (Wi-Fi do lab, 4G), sem cabo USB, sem `adb reverse` e sem depender do IP
+  # do PC. A API continua publicada no host só em loopback.
+  # Inspector das requisições: http://127.0.0.1:4040
+  ngrok:
+    image: ngrok/ngrok:3-alpine
+    container_name: celebri_ngrok
+    restart: unless-stopped
+    profiles: ["tunel"]
+    depends_on:
+      - backend
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    command: ["http", "--url=${NGROK_DOMAIN:-}", "--log=stdout", "backend:3001"]
+    ports:
+      - "127.0.0.1:4040:4040"
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
   # Frontend com Vite HMR (so para dev): substitui a binding de producao
   # (nginx na 8080 do container) pela do Vite (5173), sem conflito de porta.
   frontend:
