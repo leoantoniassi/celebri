@@ -44,6 +44,20 @@ function serializarPedido(pedido) {
   };
 }
 
+// DECIMAL do Postgres chega como string ("800.00"); o app espera número.
+function serializarServico(servico) {
+  const json = typeof servico.toJSON === 'function' ? servico.toJSON() : servico;
+  return {
+    id: json.id,
+    item: json.item,
+    quantidade: json.quantidade == null ? null : Number(json.quantidade),
+    unidade: json.unidade ?? null,
+    horario: json.horario ?? null,
+    status: json.status,
+    observacao: json.observacao ?? null,
+  };
+}
+
 // GET /api/operacao/eventos/:eventoId/mesas — mapa do garçom
 async function mapaMesas(req, res, next) {
   try {
@@ -219,7 +233,7 @@ async function painelCozinha(req, res, next) {
           qtdAdultos: evento.qtdAdultos || 0,
           qtdCriancas: evento.qtdCriancas || 0,
         },
-        servicos,
+        servicos: servicos.map(serializarServico),
         pedidos: pedidos.map(serializarPedido),
         estoque: estoque
           .filter((ep) => ep.produto)
@@ -255,7 +269,7 @@ async function mudarStatusServico(req, res, next) {
     if (!servico) return res.status(404).json({ success: false, message: 'Item do cardápio não encontrado.' });
 
     await servico.update({ status, atualizadoEm: new Date() });
-    return res.json({ success: true, data: servico });
+    return res.json({ success: true, data: serializarServico(servico) });
   } catch (error) {
     return next(error);
   }

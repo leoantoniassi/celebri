@@ -180,7 +180,10 @@ describe('Garçom e cozinha', () => {
 
   describe('painel da cozinha', () => {
     test('junta cardápio, pedidos abertos e estoque com alerta de mínimo', async () => {
-      ServicoEvento.findAll.mockResolvedValue([{ id: 's1', item: 'Salgados', status: 'pendente' }]);
+      ServicoEvento.findAll.mockResolvedValue([
+        { toJSON: () => ({ id: 's1', item: 'Salgados', quantidade: '800.00', unidade: 'un', status: 'pendente' }) },
+        { toJSON: () => ({ id: 's2', item: 'Bolo', quantidade: null, status: 'pendente' }) },
+      ]);
       Pedido.findAll.mockResolvedValue([pedidoJson({ itens: [{ descricao: 'Bolo', alerta: true }] })]);
       EventoProduto.findAll.mockResolvedValue([
         { quantidade: '10', produto: { id: 'p1', nome: 'Refrigerante', quantidade: '5', estoqueMinimo: '8', unidadeMedida: 'L' } },
@@ -193,10 +196,13 @@ describe('Garçom e cozinha', () => {
       expect(res.body.data.evento).toMatchObject({ qtdAdultos: 50, qtdCriancas: 30 });
       expect(res.body.data.pedidos[0].temAlerta).toBe(true);
       expect(res.body.data.estoque.map((e) => e.estoqueBaixo)).toEqual([true, false]);
+      // DECIMAL vem como string do Postgres; o app (System.Text.Json) precisa de número.
+      expect(res.body.data.servicos.map((s) => s.quantidade)).toEqual([800, null]);
     });
 
     test('muda status de item do cardápio só dentro do evento', async () => {
-      const servico = { id: 's1', status: 'pendente', update: jest.fn() };
+      const servico = { id: 's1', status: 'pendente', quantidade: '12.50', update: jest.fn() };
+      servico.toJSON = () => ({ id: servico.id, status: servico.status, quantidade: servico.quantidade });
       ServicoEvento.findOne.mockResolvedValue(servico);
 
       const res = await request(app)
@@ -204,6 +210,7 @@ describe('Garçom e cozinha', () => {
 
       expect(res.status).toBe(200);
       expect(servico.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'servido' }));
+      expect(res.body.data.quantidade).toBe(12.5);
       expect(ServicoEvento.findOne).toHaveBeenCalledWith({
         where: { id: '66666666-6666-4666-8666-666666666666', eventoId: EVENTO_ID },
       });
