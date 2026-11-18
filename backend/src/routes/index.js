@@ -24,9 +24,10 @@ router.use('/convites',     require('./convites.routes'));
 router.use('/portaria',     require('./portaria.routes'));
 router.use('/lgpd',         require('./lgpd.routes'));
 
-const { operacaoRouter, mesasRouter, servicosRouter } = require('./operacao.routes');
+const { operacaoRouter, mesasRouter, servicosRouter, eventoProdutosRouter } = require('./operacao.routes');
 router.use('/operacao',     operacaoRouter);
 router.use('/mesas',        mesasRouter);
 router.use('/servicos',     servicosRouter);
+router.use('/evento-produtos', eventoProdutosRouter);
 
 module.exports = router;

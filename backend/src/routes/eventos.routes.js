@@ -10,6 +10,7 @@ const { validarUuidNoRouter } = require('../middleware/validarUuid');
 const controller = require('../controllers/eventoController');
 const convites = require('../controllers/conviteController');
 const servicos = require('../controllers/servicoEventoController');
+const produtos = require('../controllers/eventoProdutoController');
 
 router.use(auth);
 validarUuidNoRouter(router, 'id', 'eventoId');
@@ -34,6 +35,10 @@ router.patch('/:eventoId/portaria', ...painel, convites.configurarPortaria);
 // Cozinha: o que será servido, quanto e quando
 router.get('/:eventoId/servicos', ...painel, servicos.listar);
 router.post('/:eventoId/servicos', ...painel, servicos.criar);
+
+// Produtos reservados para o evento (aba Estoque da cozinha no app)
+router.get('/:eventoId/produtos', ...painel, produtos.listar);
+router.post('/:eventoId/produtos', ...painel, produtos.adicionar);
 
 
 module.exports = router;

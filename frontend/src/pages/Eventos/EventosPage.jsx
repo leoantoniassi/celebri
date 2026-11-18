@@ -6,6 +6,7 @@ import Toast from "../../components/Toast";
 import WhatsAppIcon from "../../components/WhatsAppIcon";
 import useDeleteWithConfirm from "../../hooks/useDeleteWithConfirm";
 import CardapioEventoModal from "../../components/CardapioEventoModal";
+import ProdutosEventoModal from "../../components/ProdutosEventoModal";
 
 export default function EventosPage() {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ export default function EventosPage() {
   const [novoConvite, setNovoConvite] = useState({ nome: "", telefone: "", qtdPessoas: 1 });
   const [salvandoConvite, setSalvandoConvite] = useState(false);
   const [showCardapio, setShowCardapio] = useState(false);
+  const [showProdutos, setShowProdutos] = useState(false);
   const { executeDelete } = useDeleteWithConfirm();
 
   const fetchData = async () => {
@@ -699,6 +701,13 @@ export default function EventosPage() {
                   <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">restaurant_menu</span>
                   Cardápio
                 </button>
+                <button
+                  onClick={() => setShowProdutos(true)}
+                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-3.5 bg-surface border-2 border-primary text-on-surface rounded-2xl font-bold text-sm hover:bg-primary hover:text-on-primary transition-all shadow-sm group"
+                >
+                  <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">inventory_2</span>
+                  Produtos / Estoque
+                </button>
               </div>
             </>
           ) : (
@@ -712,6 +721,10 @@ export default function EventosPage() {
 
       {showCardapio && selectedEvento && (
         <CardapioEventoModal evento={selectedEvento} onClose={() => setShowCardapio(false)} />
+      )}
+
+      {showProdutos && selectedEvento && (
+        <ProdutosEventoModal evento={selectedEvento} onClose={() => setShowProdutos(false)} />
       )}
 
       {/* ─── Modal: Convidados e Portaria ─────────────────────────── */}

@@ -3,7 +3,7 @@
 // ============================================================
 const request = require('supertest');
 const express = require('express');
-const { Orcamento, Cliente, Local, Evento, OrcamentoProduto } = require('../models');
+const { Orcamento, Cliente, Local, Evento, EventoProduto, OrcamentoProduto } = require('../models');
 
 // ── Mock do usuário autenticado (alterável por teste) ──────
 let mockUser = { id: 'user-1', role: 'gerente' };
@@ -36,7 +36,13 @@ jest.mock('../models', () => ({
   Cliente: { findOne: jest.fn() },
   Local: { findOne: jest.fn() },
   Evento: { create: jest.fn() },
-  OrcamentoProduto: { bulkCreate: jest.fn() },
+  EventoProduto: { bulkCreate: jest.fn() },
+  OrcamentoProduto: { bulkCreate: jest.fn(), findAll: jest.fn().mockResolvedValue([]) },
+}));
+
+jest.mock('../config/database', () => ({
+  transaction: jest.fn((fn) => fn('tx')),
+  define: jest.fn(),
 }));
 
 // ── Helper: validação de UUID (usada nos testes de segurança) ──
@@ -220,6 +226,28 @@ describe('OrcamentoDatas — dataEvento e horarioTermino', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.message).toContain('sucesso');
       expect(Evento.create).toHaveBeenCalledTimes(1);
+      expect(EventoProduto.bulkCreate).not.toHaveBeenCalled();
+    });
+
+    test('deve copiar os produtos do orçamento para o evento (estoque da cozinha)', async () => {
+      Orcamento.findOne.mockResolvedValue(makeOrcamento({ empresaId: 'emp-1' }));
+      Evento.create.mockResolvedValue({ id: 'evt-1', orcamentoId: 'orc-1' });
+      OrcamentoProduto.findAll.mockResolvedValueOnce([
+        { produtoId: 'prd-1', quantidade: '12.50' },
+        { produtoId: 'prd-2', quantidade: '3.00' },
+      ]);
+
+      const res = await request(app)
+        .post('/api/orcamentos/550e8400-e29b-41d4-a716-446655440000/confirmar');
+
+      expect(res.status).toBe(200);
+      expect(EventoProduto.bulkCreate).toHaveBeenCalledWith(
+        [
+          { empresaId: 'emp-1', eventoId: 'evt-1', produtoId: 'prd-1', quantidade: '12.50' },
+          { empresaId: 'emp-1', eventoId: 'evt-1', produtoId: 'prd-2', quantidade: '3.00' },
+        ],
+        { transaction: 'tx' },
+      );
     });
 
     test('deve retornar 400 se orçamento não tiver dataEvento', async () => {

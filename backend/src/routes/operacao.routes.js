@@ -11,6 +11,7 @@ const { exigirAcessoAoEvento } = require('../middleware/acessoEvento');
 const operacao = require('../controllers/operacaoController');
 const mesas = require('../controllers/mesaController');
 const servicos = require('../controllers/servicoEventoController');
+const eventoProdutos = require('../controllers/eventoProdutoController');
 
 // /api/operacao — app mobile
 const operacaoRouter = express.Router();
@@ -36,4 +37,11 @@ validarUuidNoRouter(servicosRouter, 'id');
 servicosRouter.put('/:id', servicos.atualizar);
 servicosRouter.delete('/:id', servicos.remover);
 
-module.exports = { operacaoRouter, mesasRouter, servicosRouter };
+// /api/evento-produtos — painel
+const eventoProdutosRouter = express.Router();
+eventoProdutosRouter.use(auth, exigirPapelAdministrativo, authorize('gerente', 'operador'));
+validarUuidNoRouter(eventoProdutosRouter, 'id');
+eventoProdutosRouter.put('/:id', eventoProdutos.atualizar);
+eventoProdutosRouter.delete('/:id', eventoProdutos.remover);
+
+module.exports = { operacaoRouter, mesasRouter, servicosRouter, eventoProdutosRouter };

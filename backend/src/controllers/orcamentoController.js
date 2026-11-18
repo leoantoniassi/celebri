@@ -10,7 +10,9 @@ const {
   Produto,
   CategoriaProduto,
   Evento,
+  EventoProduto,
 } = require("../models");
+const sequelize = require('../config/database');
 const { isValidUUID, gerarWarningPessoas } = require('../utils/validators');
 const { gerarLinkWhatsApp } = require('../utils/whatsapp');
 const { saudacaoWhatsapp } = require('../utils/brand');
@@ -338,26 +340,49 @@ async function confirmarOrcamento(req, res, next) {
     const erroData = validarDatas(orcamento.dataEvento, orcamento.horarioTermino);
     if (erroData) return respostaErro(res, 400, erroData);
 
-    const evento = await Evento.create({
-      orcamentoId:    orcamento.id,
-      clienteId:      orcamento.clienteId,
-      localId:        orcamento.localId || null,
-      nome:           orcamento.nome || `Evento de ${orcamento.cliente ? orcamento.cliente.nome : "Cliente"}`,
-      dataEvento:     orcamento.dataEvento,
-      horarioTermino: orcamento.horarioTermino,
-      qtdPessoas:     orcamento.qtdPessoas || 0,
-      qtdAdultos:     orcamento.qtdAdultos || 0,
-      qtdCriancas:    orcamento.qtdCriancas || 0,
-      qtdBebes:       orcamento.qtdBebes || 0,
-      observacoes:    orcamento.observacoes,
-      valorOrcamento: orcamento.valorTotal || 0,
-      status:         "pendente",
-    });
+    // Evento + produtos reservados + baixa do orçamento: tudo ou nada.
+    const evento = await sequelize.transaction(async (transaction) => {
+      const novoEvento = await Evento.create({
+        orcamentoId:    orcamento.id,
+        clienteId:      orcamento.clienteId,
+        localId:        orcamento.localId || null,
+        nome:           orcamento.nome || `Evento de ${orcamento.cliente ? orcamento.cliente.nome : "Cliente"}`,
+        dataEvento:     orcamento.dataEvento,
+        horarioTermino: orcamento.horarioTermino,
+        qtdPessoas:     orcamento.qtdPessoas || 0,
+        qtdAdultos:     orcamento.qtdAdultos || 0,
+        qtdCriancas:    orcamento.qtdCriancas || 0,
+        qtdBebes:       orcamento.qtdBebes || 0,
+        observacoes:    orcamento.observacoes,
+        valorOrcamento: orcamento.valorTotal || 0,
+        status:         "pendente",
+      }, { transaction });
 
-    await orcamento.update({
-      status:       "aprovado",
-      deletadoEm:   new Date(),
-      atualizadoEm: new Date(),
+      // Os produtos do orçamento viram a reserva do evento (aba Estoque da
+      // cozinha no app). empresaId explícito: bulkCreate não roda o hook de tenant.
+      const produtosOrcamento = await OrcamentoProduto.findAll({
+        where: { orcamentoId: orcamento.id },
+        transaction,
+      });
+      if (produtosOrcamento.length > 0) {
+        await EventoProduto.bulkCreate(
+          produtosOrcamento.map((p) => ({
+            empresaId:  orcamento.empresaId,
+            eventoId:   novoEvento.id,
+            produtoId:  p.produtoId,
+            quantidade: p.quantidade || 0,
+          })),
+          { transaction }
+        );
+      }
+
+      await orcamento.update({
+        status:       "aprovado",
+        deletadoEm:   new Date(),
+        atualizadoEm: new Date(),
+      }, { transaction });
+
+      return novoEvento;
     });
 
     return res.json({

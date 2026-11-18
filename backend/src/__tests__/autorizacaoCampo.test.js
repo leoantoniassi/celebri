@@ -87,6 +87,10 @@ const ROTAS_RESTRITAS = [
   ['put', `/api/convites/${ID}`],
   ['put', `/api/mesas/${ID}`],
   ['put', `/api/servicos/${ID}`],
+  ['get', `/api/eventos/${ID}/produtos`],
+  ['post', `/api/eventos/${ID}/produtos`],
+  ['put', `/api/evento-produtos/${ID}`],
+  ['delete', `/api/evento-produtos/${ID}`],
 ];
 
 // Rotas que o app mobile usa: nunca devem responder com a negativa de painel.
