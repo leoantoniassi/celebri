@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
 
 // ============================================================
 // Cores do tema para bibliotecas que não entendem CSS
@@ -34,15 +33,31 @@ function lerTokens() {
   }, {});
 }
 
+function mesmasCores(a, b) {
+  return TOKENS.every((token) => a[token] === b[token]);
+}
+
 export default function useCoresDoTema() {
-  const tema = useTheme();
   const [cores, setCores] = useState(lerTokens);
 
-  // As custom properties só existem no DOM depois que o ThemeContext as
-  // aplica, então releitura é disparada por mudança da config do tenant.
+  // O ThemeProvider grava a paleta com style.setProperty no <html> e troca
+  // a classe .dark no modo escuro. Observar essas mutações garante a
+  // releitura DEPOIS da paleta aplicada — um efeito dependente do contexto
+  // rodaria antes do efeito do provider (filho antes do pai) e leria a
+  // paleta antiga; e a troca claro/escuro nem mudava a config.
   useEffect(() => {
-    setCores(lerTokens());
-  }, [tema?.config]);
+    if (typeof window === 'undefined' || typeof MutationObserver === 'undefined') return undefined;
+
+    const atualizar = () => {
+      const novas = lerTokens();
+      setCores((atuais) => (mesmasCores(atuais, novas) ? atuais : novas));
+    };
+
+    atualizar();
+    const observador = new MutationObserver(atualizar);
+    observador.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    return () => observador.disconnect();
+  }, []);
 
   return cores;
 }

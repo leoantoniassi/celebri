@@ -148,19 +148,27 @@ const ALVO_MARCA_GRAFICO = 3;
  *
  * A cor da marca é escolhida para caber num botão, não para ser lida como
  * um ponto num fundo branco: o amarelo padrão (#FEDC57) dá ~1.4:1 contra
- * branco, e uma linha nessa cor some. Aqui a luminosidade é reduzida,
+ * branco, e uma linha nessa cor some. Aqui a luminosidade é ajustada,
  * mantendo matiz e croma, até alcançar 3:1 — o piso de contraste para
  * elementos gráficos não textuais (WCAG 1.4.11).
+ *
+ * A direção depende do fundo: num fundo claro a cor é escurecida; num
+ * fundo escuro (modo escuro) ela é clareada — escurecer um azul-marinho
+ * sobre a superfície escura o deixava em ~1:1, invisível.
  */
 function corParaGrafico(hex, fundo = '#ffffff') {
   if (contraste(hex, fundo) >= ALVO_MARCA_GRAFICO) return hex;
 
   const base = hexParaOklch(hex);
-  for (let t = Math.round(base.L * 100); t >= 15; t -= 2) {
+  const fundoEscuro = luminancia(fundo) < 0.18;
+  const passo = fundoEscuro ? 2 : -2;
+  const limite = fundoEscuro ? 95 : 15;
+
+  for (let t = Math.round(base.L * 100); fundoEscuro ? t <= limite : t >= limite; t += passo) {
     const candidato = oklchParaHex({ L: t / 100, C: base.C, h: base.h });
     if (contraste(candidato, fundo) >= ALVO_MARCA_GRAFICO) return candidato;
   }
-  return oklchParaHex({ L: 0.15, C: base.C, h: base.h });
+  return oklchParaHex({ L: limite / 100, C: base.C, h: base.h });
 }
 
 /** Os 4 tokens de um papel de cor: base, texto sobre ela, container e texto do container. */

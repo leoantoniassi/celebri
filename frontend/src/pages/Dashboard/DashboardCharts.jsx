@@ -154,21 +154,18 @@ export default function DashboardCharts() {
                   return null;
                 }}
               />
-              {/* Anel de superfície separa pontos sobrepostos com alternância de cores da marca */}
+              {/* Série única: cor sólida chart-1 (>= 3:1 contra a superfície do
+                  modo atual, claro ou escuro). As cores cruas da marca não têm
+                  essa garantia e sumiam no fundo. O anel de superfície separa
+                  pontos sobrepostos. */}
               <Scatter
                 name="Festas"
                 data={data.scatter}
-                fillOpacity={0.85}
+                fill={cores['chart-1']}
+                fillOpacity={1}
                 stroke={cores.surface}
                 strokeWidth={2}
-              >
-                {data.scatter.map((entry, index) => (
-                  <Cell
-                    key={`scatter-cell-${entry.nome || index}`}
-                    fill={obterCorGrafico((index + 1) % (paletaGrafico.length || 1))}
-                  />
-                ))}
-              </Scatter>
+              />
             </ScatterChart>
           </ResponsiveContainer>
         )}
